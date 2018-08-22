@@ -12,7 +12,7 @@ export class Nav extends React.Component<NavProps, NavState> {
     }
     render() {
         return (
-            <Navbar style={{ margin: '0', marginBottom: '50px', zIndex: -1 }}>
+            <Navbar style={{ zIndex: -1 }}>
                 <NavbarBrand>
                     <NavbarItem>
                         <Image

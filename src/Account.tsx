@@ -1,9 +1,10 @@
-import * as React from 'react';
-import * as _ from 'lodash';
-import { Card, CardHeader, CardContent, Column, Button, Icon, Columns, Notification } from 'bloomer';
-import { ZeroEx, Token } from '0x.js';
-import { Web3Wrapper } from '@0xproject/web3-wrapper';
+import { Token, ZeroEx } from '0x.js';
 import { BigNumber } from '@0xproject/utils';
+import { Web3Wrapper } from '@0xproject/web3-wrapper';
+import { Button, Column, Columns, Content, Icon, Subtitle, Table } from 'bloomer';
+import * as _ from 'lodash';
+import * as React from 'react';
+import { tokensByNetwork } from './helpers/tokens';
 
 interface Props {
     zeroEx: ZeroEx;
@@ -16,70 +17,37 @@ interface TokenBalance {
     allowance: BigNumber;
 }
 
-const tokensByNetwork = {
-    42: {
-        ZRX: {
-            name: '0x Protocol Token',
-            address: '0x6ff6c0ff1d68b964901f986d4c9fa3ac68346570',
-            decimals: 18,
-        },
-        MKR: {
-            name: 'Maker DAO',
-            address: '0x1dad4783cf3fe3085c1426157ab175a6119a04ba',
-            decimals: 18,
-        },
-        GNT: {
-            name: 'Golem Network Token',
-            address: '0xef7fff64389b814a946f3e92105513705ca6b990',
-            decimals: 18,
-        },
-        REP: {
-            name: 'Augur Reputation Token',
-            address: '0xb18845c260f680d5b9d84649638813e342e4f8c9',
-            decimals: 18,
-        },
-        WETH: {
-            name: 'Wrapped ETH',
-            address: '0xd0a1e359811322d97991e03f863a0c30c2cf029c',
-            decimals: 18,
-        },
-    },
-};
-
 type AddressTokenBalance = { [address: string]: TokenBalance[] };
+
 interface AccountState {
     balances: AddressTokenBalance;
     accounts: string[];
+    selectedAccount: string;
 }
+
 const ETHER_TOKEN_NAME = 'ETH';
+
 export default class Account extends React.Component<Props, AccountState> {
     private _web3Wrapper: Web3Wrapper;
     constructor(props: Props) {
         super(props);
-        this.state = { accounts: [''], balances: {} };
+        this.state = { accounts: [''], balances: {}, selectedAccount: '' };
         this._web3Wrapper = new Web3Wrapper(this.props.zeroEx.getProvider());
         this.fetchAccountDetailsAsync();
     }
 
     fetchAccountDetailsAsync = async () => {
-        // Get the Available Addresses from the Web3 Provider inside of ZeroEx
-        console.log('zeroEx', this.props.zeroEx);
-        console.log('provider', this.props.zeroEx.getProvider());
-        console.log('requesting available addresses');
         const addresses = await this.props.zeroEx.getAvailableAddressesAsync();
         const address = addresses[0];
-        console.log('got address', address);
         if (!address) {
             return;
         }
         const networkId = await this._web3Wrapper.getNetworkIdAsync();
-        console.log('got network', networkId);
         const tokens = tokensByNetwork[networkId];
         const balances = {};
         const allowances = {};
         balances[address] = {};
         allowances[address] = {};
-        console.log('getting balances');
         // Fetch all the Balances for all of the tokens in the Token Registry
         const allBalancesAsync = _.map(
             tokens,
@@ -109,7 +77,7 @@ export default class Account extends React.Component<Props, AccountState> {
                 balances[address] = [
                     ...balances[address],
                     {
-                        token: { name: ETHER_TOKEN_NAME, decimals: 18 },
+                        token: { name: ETHER_TOKEN_NAME, decimals: 18, symbol: 'ETH' },
                         balance: ethBalanceNumber,
                         allowance: new BigNumber(0),
                     },
@@ -121,16 +89,18 @@ export default class Account extends React.Component<Props, AccountState> {
 
         // Update the state in React
         this.setState(prev => {
-            return { ...prev, balances, accounts: addresses, allowances };
+            const prevSelectedAccount = prev.selectedAccount;
+            const selectedAccount = prevSelectedAccount == '' ? address : prevSelectedAccount;
+            return { ...prev, balances, accounts: addresses, allowances, selectedAccount };
         });
-    }
+    };
     setProxyAllowanceAsync = async (tokenAddress: string) => {
         const { zeroEx } = this.props;
         const { accounts } = this.state;
         const account = accounts[0];
         const txHash = await zeroEx.erc20Token.setUnlimitedProxyAllowanceAsync(tokenAddress, account);
         this.transactionSubmitted(txHash);
-    }
+    };
     transactionSubmitted = async (txHash: string) => {
         console.log(txHash);
         this.props.toastManager.add(`Transaction Submitted: ${txHash}`, {
@@ -145,34 +115,27 @@ export default class Account extends React.Component<Props, AccountState> {
         });
         console.log(receipt);
         this.fetchAccountDetailsAsync();
-    }
+    };
     render() {
-        const { accounts, balances } = this.state;
-        const account = accounts[0];
+        const { balances } = this.state;
+        const account = this.state.selectedAccount;
         const userBalances = balances[account];
         const fetchBalancesButton = (
-            <Button isColor="info" id="fetchAccountBalances" onClick={this.fetchAccountDetailsAsync}>
+            <Button isSize="small" isColor="info" id="fetchAccountBalances" onClick={this.fetchAccountDetailsAsync}>
                 Fetch Balances
             </Button>
         );
-        const detectingMetamaskRender = (
-            <Column isSize="1/3">
-                <Card>
-                    <CardHeader>
-                        <strong>Detecting Metamask...</strong>
-                    </CardHeader>
-                    <CardContent>
-                        <p> Please ensure Metamask is unlocked </p>
-                        {fetchBalancesButton}
-                    </CardContent>
-                </Card>
-            </Column>
+        let contentRender = (
+            <div>
+                <strong>Detecting Metamask...</strong>
+                <p> Please ensure Metamask is unlocked </p>
+            </div>
         );
 
         if (userBalances) {
-            const accountString = `${account}`;
             const balancesString = _.map(userBalances, (tokenBalance: TokenBalance) => {
                 const name = tokenBalance.token.name;
+                const symbol = tokenBalance.token.symbol;
                 const balance = ZeroEx.toUnitAmount(tokenBalance.balance, tokenBalance.token.decimals);
                 const allowance = ZeroEx.toUnitAmount(tokenBalance.allowance, tokenBalance.token.decimals);
                 const allowanceRender = allowance.greaterThan(0) ? (
@@ -183,35 +146,39 @@ export default class Account extends React.Component<Props, AccountState> {
                     </a>
                 );
                 return balance ? (
-                    <div key={name}>
-                        <Columns>
-                            <Column isSize="2/3">
-                                <strong>{name}:</strong>
-                            </Column>
-                            <Column>
-                                <p style={{ textAlign: 'right' }}>{balance.toFixed(4)}</p>
-                            </Column>
-                            <Column hasTextAlign="right">{allowanceRender}</Column>
-                        </Columns>
-                    </div>
+                    <tr key={name}>
+                        <td>{symbol}</td>
+                        <td>{balance.toFixed(4)}</td>
+                        <td>{allowanceRender}</td>
+                    </tr>
                 ) : (
-                    <div />
+                    <tr />
                 );
             });
-            return (
-                <Column isSize="1/3">
-                    <Card>
-                        <CardHeader>{accountString}</CardHeader>
-                        <CardContent>
-                            <h5> Balances </h5>
-                            {balancesString}
-                            {fetchBalancesButton}
-                        </CardContent>
-                    </Card>
-                </Column>
+            contentRender = (
+                <div>
+                    <Table isStriped={false} isNarrow={true} className="is-hoverable">
+                        <thead>
+                            <tr>
+                                <th>Token</th>
+                                <th>Balance</th>
+                                <th>Allowance</th>
+                            </tr>
+                        </thead>
+                        <tbody>{balancesString}</tbody>
+                    </Table>
+                </div>
             );
-        } else {
-            return detectingMetamaskRender;
         }
+
+        return (
+            <Content style={{ marginTop: '15px' }}>
+                <Subtitle isSize={6}>Account: {account}</Subtitle>
+                <Columns>
+                    <Column isSize={3}>{contentRender}</Column>
+                </Columns>
+                {fetchBalancesButton}
+            </Content>
+        );
     }
 }
