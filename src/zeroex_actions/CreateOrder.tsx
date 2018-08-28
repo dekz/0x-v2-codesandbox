@@ -1,4 +1,4 @@
-import { ZeroEx } from '0x.js';
+import { ContractWrappers, assetDataUtils, signatureUtils } from '0x.js';
 import { generatePseudoRandomSalt, orderHashUtils } from '@0xproject/order-utils';
 import { Order, SignerType } from '@0xproject/types';
 import { BigNumber } from 'bignumber.js';
@@ -7,9 +7,13 @@ import * as _ from 'lodash';
 import * as React from 'react';
 import { PanelBlockField } from '../helpers/PanelBlockField';
 import { tokensByNetwork } from '../helpers/tokens';
+import { Web3Wrapper } from '@0xproject/web3-wrapper';
+
+const NULL_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 interface Props {
-    zeroEx: ZeroEx;
+    contractWrappers: ContractWrappers;
+    web3Wrapper: Web3Wrapper;
     onTxSubmitted: (txHash: string) => void;
 }
 
@@ -38,18 +42,17 @@ export default class CreateOrder extends React.Component<Props, CreateOrderState
     };
     createOrderClick = async () => {
         const { makerToken, makerAmount, takerToken, takerAmount } = this.state;
-        const { zeroEx } = this.props;
-        const addresses = await zeroEx.getAvailableAddressesAsync();
+        const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
         const account = addresses[0];
         const tokens = tokensByNetwork[42];
-        const makerAssetData = ZeroEx.encodeERC20AssetData(tokens[makerToken].address);
-        const takerAssetData = ZeroEx.encodeERC20AssetData(tokens[takerToken].address);
-        const exchangeAddress = zeroEx.exchange.getContractAddress();
+        const makerAssetData = assetDataUtils.encodeERC20AssetData(tokens[makerToken].address);
+        const takerAssetData = assetDataUtils.encodeERC20AssetData(tokens[takerToken].address);
+        const exchangeAddress = this.props.contractWrappers.exchange.getContractAddress();
         const order: Order = {
-            senderAddress: ZeroEx.NULL_ADDRESS,
-            feeRecipientAddress: ZeroEx.NULL_ADDRESS,
+            senderAddress: NULL_ADDRESS,
+            feeRecipientAddress: NULL_ADDRESS,
             makerAddress: account,
-            takerAddress: ZeroEx.NULL_ADDRESS,
+            takerAddress: NULL_ADDRESS,
             makerFee: new BigNumber(0),
             takerFee: new BigNumber(0),
             makerAssetAmount: new BigNumber(makerAmount),
@@ -61,7 +64,13 @@ export default class CreateOrder extends React.Component<Props, CreateOrderState
             exchangeAddress,
         };
         const orderHashHex = orderHashUtils.getOrderHashHex(order);
-        const signature = await zeroEx.ecSignOrderHashAsync(orderHashHex, account, SignerType.Metamask);
+        const provider = this.props.web3Wrapper.getProvider();
+        const signature = await signatureUtils.ecSignOrderHashAsync(
+            provider,
+            orderHashHex,
+            account,
+            SignerType.Metamask,
+        );
         const signedOrderJSON = JSON.stringify({ ...order, signature }, null, 2);
         this.setState(prevState => {
             return { ...prevState, signedOrder: signedOrderJSON, orderHash: orderHashHex };

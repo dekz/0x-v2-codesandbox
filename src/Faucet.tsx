@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { ZeroEx } from '0x.js';
+import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, Content, Subtitle, Control } from 'bloomer';
 
 interface Props {
-    zeroEx: ZeroEx;
+    web3Wrapper: Web3Wrapper;
 }
 
 export default class Faucet extends React.Component<Props, {}> {
@@ -37,34 +37,17 @@ export default class Faucet extends React.Component<Props, {}> {
         );
     }
     dispenseZRX = async (): Promise<void> => {
-        const addresses = await this.props.zeroEx.getAvailableAddressesAsync();
+        const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
         const address = addresses[0];
         const url = `https://faucet.0xproject.com/zrx/${address}`;
         await fetch(url);
         console.log('Dispense ZRX requested');
     };
     dispenseETH = async (): Promise<void> => {
-        const addresses = await this.props.zeroEx.getAvailableAddressesAsync();
+        const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
         const address = addresses[0];
         const url = `https://faucet.0xproject.com/ether/${address}`;
         await fetch(url);
         console.log('Dispense ETH requested');
     };
-    // private async orderWETH(): Promise<void> {
-    //     const addresses = await this.props.zeroEx.getAvailableAddressesAsync();
-    //     const address = addresses[0];
-    //     const url = `https://faucet.0xproject.com/order/weth/${address}`;
-    //     const response = await fetch(url);
-    //     const bodyJson = await response.json();
-
-    //     const signedOrder: SignedOrder = relayerResponseJsonParsers.parseOrderJson(bodyJson);
-    //     console.log(signedOrder);
-
-    //     const fillAmount = ZeroEx.toBaseUnitAmount(signedOrder.takerTokenAmount, 18);
-    //     try {
-    //         await this.props.zeroEx.exchange.fillOrderAsync(signedOrder, fillAmount, true, address);
-    //     } catch (e) {
-    //         console.log(e);
-    //     }
-    // }
 }

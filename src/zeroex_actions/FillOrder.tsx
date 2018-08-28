@@ -1,11 +1,12 @@
-import { ZeroEx } from '0x.js';
-import { BigNumber } from '@0xproject/utils';
+import { BigNumber, ContractWrappers, SignedOrder } from '0x.js';
+import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, PanelBlock, TextArea } from 'bloomer';
 import * as React from 'react';
 import { PanelBlockField } from '../helpers/PanelBlockField';
 
 interface Props {
-    zeroEx: ZeroEx;
+    contractWrappers: ContractWrappers;
+    web3Wrapper: Web3Wrapper;
     onTxSubmitted: (txHash: string) => void;
 }
 
@@ -13,13 +14,18 @@ interface FillOrderState {
     signedOrder?: string;
 }
 export default class FillOrder extends React.Component<Props, FillOrderState> {
-    constructor(props: Props) {
-        super(props);
-        this.state = {};
-    }
+    fillOrder = async (signedOrder: SignedOrder): Promise<string> => {
+        const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
+        const account = addresses[0];
+        const txHash = await this.props.contractWrappers.exchange.fillOrderAsync(
+            signedOrder,
+            signedOrder.takerAssetAmount,
+            account,
+        );
+        return txHash;
+    };
     fillOrderClick = async () => {
         const signedOrderJSON = this.state.signedOrder;
-        const { zeroEx } = this.props;
         if (signedOrderJSON) {
             const signedOrder = JSON.parse(signedOrderJSON);
             signedOrder.salt = new BigNumber(signedOrder.salt);
@@ -28,9 +34,7 @@ export default class FillOrder extends React.Component<Props, FillOrderState> {
             signedOrder.makerFee = new BigNumber(signedOrder.makerFee);
             signedOrder.takerFee = new BigNumber(signedOrder.takerFee);
             signedOrder.expirationTimeSeconds = new BigNumber(signedOrder.expirationTimeSeconds);
-            const addresses = await zeroEx.getAvailableAddressesAsync();
-            const account = addresses[0];
-            const txHash = await zeroEx.exchange.fillOrderAsync(signedOrder, signedOrder.takerAssetAmount, account);
+            const txHash = await this.fillOrder(signedOrder as SignedOrder);
             this.props.onTxSubmitted(txHash);
         }
     };
@@ -57,7 +61,7 @@ export default class FillOrder extends React.Component<Props, FillOrderState> {
                 </PanelBlockField>
                 <PanelBlock>
                     <Button
-                        onClick={() => this.fillOrderClick()}
+                        onClick={this.fillOrderClick}
                         isFullWidth={true}
                         isSize="small"
                         isColor="primary"

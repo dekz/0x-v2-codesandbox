@@ -1,13 +1,10 @@
-import { ZeroEx } from '0x.js';
-import { OrderStatus } from '@0xproject/contract-wrappers';
-import { orderHashUtils } from '@0xproject/order-utils';
-import { BigNumber } from '@0xproject/utils';
+import { BigNumber, ContractWrappers, orderHashUtils, OrderStatus } from '0x.js';
 import { Button, PanelBlock, TextArea } from 'bloomer';
 import * as React from 'react';
 import { PanelBlockField } from '../helpers/PanelBlockField';
 
 interface Props {
-    zeroEx: ZeroEx;
+    contractWrappers: ContractWrappers;
     onTxSubmitted: (txHash: string) => void;
 }
 
@@ -16,12 +13,7 @@ interface CancelOrderState {
 }
 
 export default class CancelOrder extends React.Component<Props, CancelOrderState> {
-    constructor(props: Props) {
-        super(props);
-        this.state = {};
-    }
     cancelClick = async () => {
-        const { zeroEx } = this.props;
         const { order } = this.state;
         if (order) {
             const signedOrder = JSON.parse(order);
@@ -32,9 +24,9 @@ export default class CancelOrder extends React.Component<Props, CancelOrderState
             signedOrder.takerFee = new BigNumber(signedOrder.takerFee);
             signedOrder.expirationTimeSeconds = new BigNumber(signedOrder.expirationTimeSeconds);
             const orderHashHex = orderHashUtils.getOrderHashHex(signedOrder);
-            const orderInfo = await zeroEx.exchange.getOrderInfoAsync(signedOrder);
+            const orderInfo = await this.props.contractWrappers.exchange.getOrderInfoAsync(signedOrder);
             if (orderInfo.orderStatus == OrderStatus.FILLABLE) {
-                const txHash = await zeroEx.exchange.cancelOrderAsync(signedOrder);
+                const txHash = await this.props.contractWrappers.exchange.cancelOrderAsync(signedOrder);
                 this.props.onTxSubmitted(txHash);
             } else {
                 console.log('Order already filled or cancelled: ', orderHashHex);

@@ -1,5 +1,4 @@
-import { Token, ZeroEx } from '0x.js';
-import { BigNumber } from '@0xproject/utils';
+import { BigNumber, ERC20TokenWrapper } from '0x.js';
 import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, Column, Columns, Content, Icon, Subtitle, Table } from 'bloomer';
 import * as _ from 'lodash';
@@ -7,10 +6,17 @@ import * as React from 'react';
 import { tokensByNetwork } from './helpers/tokens';
 
 interface Props {
-    zeroEx: ZeroEx;
+    web3Wrapper: Web3Wrapper;
+    erc20TokenWrapper: ERC20TokenWrapper;
     toastManager: { add: (msg: string, appearance: {}) => void };
 }
 
+interface Token {
+    name: string;
+    address: string;
+    symbol: string;
+    decimals: number;
+}
 interface TokenBalance {
     token: Token;
     balance: BigNumber;
@@ -28,21 +34,19 @@ interface AccountState {
 const ETHER_TOKEN_NAME = 'ETH';
 
 export default class Account extends React.Component<Props, AccountState> {
-    private _web3Wrapper: Web3Wrapper;
     constructor(props: Props) {
         super(props);
         this.state = { accounts: [''], balances: {}, selectedAccount: '' };
-        this._web3Wrapper = new Web3Wrapper(this.props.zeroEx.getProvider());
         this.fetchAccountDetailsAsync();
     }
 
     fetchAccountDetailsAsync = async () => {
-        const addresses = await this.props.zeroEx.getAvailableAddressesAsync();
+        const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
         const address = addresses[0];
         if (!address) {
             return;
         }
-        const networkId = await this._web3Wrapper.getNetworkIdAsync();
+        const networkId = await this.props.web3Wrapper.getNetworkIdAsync();
         const tokens = tokensByNetwork[networkId];
         const balances = {};
         const allowances = {};
@@ -53,8 +57,8 @@ export default class Account extends React.Component<Props, AccountState> {
             tokens,
             async (token: Token): Promise<TokenBalance> => {
                 try {
-                    const balance = await this.props.zeroEx.erc20Token.getBalanceAsync(token.address, address);
-                    const allowance = await this.props.zeroEx.erc20Token.getProxyAllowanceAsync(token.address, address);
+                    const balance = await this.props.erc20TokenWrapper.getBalanceAsync(token.address, address);
+                    const allowance = await this.props.erc20TokenWrapper.getProxyAllowanceAsync(token.address, address);
                     const numberBalance = new BigNumber(balance);
                     return { token: token, balance: numberBalance, allowance };
                 } catch (e) {
@@ -71,7 +75,7 @@ export default class Account extends React.Component<Props, AccountState> {
         balances[address] = results;
         // Fetch the Balance in Ether
         try {
-            const ethBalance = await this._web3Wrapper.getBalanceInWeiAsync(address);
+            const ethBalance = await this.props.web3Wrapper.getBalanceInWeiAsync(address);
             if (ethBalance) {
                 const ethBalanceNumber = new BigNumber(ethBalance);
                 balances[address] = [
@@ -95,10 +99,10 @@ export default class Account extends React.Component<Props, AccountState> {
         });
     };
     setProxyAllowanceAsync = async (tokenAddress: string) => {
-        const { zeroEx } = this.props;
+        const { erc20TokenWrapper } = this.props;
         const { accounts } = this.state;
         const account = accounts[0];
-        const txHash = await zeroEx.erc20Token.setUnlimitedProxyAllowanceAsync(tokenAddress, account);
+        const txHash = await erc20TokenWrapper.setUnlimitedProxyAllowanceAsync(tokenAddress, account);
         this.transactionSubmitted(txHash);
     };
     transactionSubmitted = async (txHash: string) => {
@@ -107,7 +111,7 @@ export default class Account extends React.Component<Props, AccountState> {
             appearance: 'success',
             autoDismiss: true,
         });
-        const receipt = await this._web3Wrapper.awaitTransactionMinedAsync(txHash);
+        const receipt = await this.props.web3Wrapper.awaitTransactionMinedAsync(txHash);
         const appearance = receipt.status === 1 ? 'success' : 'error';
         this.props.toastManager.add(`Transaction Mined: ${txHash}`, {
             appearance,
@@ -136,8 +140,8 @@ export default class Account extends React.Component<Props, AccountState> {
             const balancesString = _.map(userBalances, (tokenBalance: TokenBalance) => {
                 const name = tokenBalance.token.name;
                 const symbol = tokenBalance.token.symbol;
-                const balance = ZeroEx.toUnitAmount(tokenBalance.balance, tokenBalance.token.decimals);
-                const allowance = ZeroEx.toUnitAmount(tokenBalance.allowance, tokenBalance.token.decimals);
+                const balance = Web3Wrapper.toUnitAmount(tokenBalance.balance, tokenBalance.token.decimals);
+                const allowance = Web3Wrapper.toUnitAmount(tokenBalance.allowance, tokenBalance.token.decimals);
                 const allowanceRender = allowance.greaterThan(0) ? (
                     <Icon isSize="small" className="fa fa-check-circle" style={{ color: 'rgb(77, 197, 92)' }} />
                 ) : (

@@ -1,13 +1,10 @@
-import { OrderInfo, ZeroEx } from '0x.js';
-import { OrderStatus } from '@0xproject/contract-wrappers';
-import { orderHashUtils } from '@0xproject/order-utils';
-import { BigNumber } from '@0xproject/utils';
+import { OrderInfo, OrderStatus, orderHashUtils, BigNumber, ContractWrappers } from '0x.js';
 import { Button, Input, PanelBlock, TextArea } from 'bloomer';
 import * as React from 'react';
 import { PanelBlockField } from '../helpers/PanelBlockField';
 
 interface Props {
-    zeroEx: ZeroEx;
+    contractWrappers: ContractWrappers;
     onTxSubmitted: (txHash: string) => void;
 }
 
@@ -18,12 +15,7 @@ interface OrderInfoState {
 }
 
 export default class GetOrderInfo extends React.Component<Props, OrderInfoState> {
-    constructor(props: Props) {
-        super(props);
-        this.state = {};
-    }
     getInfoClick = async () => {
-        const { zeroEx } = this.props;
         const { order } = this.state;
         if (order) {
             const signedOrder = JSON.parse(order);
@@ -34,7 +26,7 @@ export default class GetOrderInfo extends React.Component<Props, OrderInfoState>
             signedOrder.takerFee = new BigNumber(signedOrder.takerFee);
             signedOrder.expirationTimeSeconds = new BigNumber(signedOrder.expirationTimeSeconds);
             const orderHashHex = orderHashUtils.getOrderHashHex(signedOrder);
-            const orderInfo = await zeroEx.exchange.getOrderInfoAsync(signedOrder);
+            const orderInfo = await this.props.contractWrappers.exchange.getOrderInfoAsync(signedOrder);
             this.setState(prev => {
                 return { ...prev, orderHash: orderHashHex, orderInfo };
             });

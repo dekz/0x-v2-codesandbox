@@ -1,4 +1,4 @@
-import { ZeroEx } from '0x.js';
+import { ContractWrappers } from '0x.js';
 import { Column, Columns, Content, Panel, PanelTabs, Subtitle } from 'bloomer';
 import * as _ from 'lodash';
 import * as React from 'react';
@@ -7,9 +7,11 @@ import CreateOrder from './zeroex_actions/CreateOrder';
 import FillOrder from './zeroex_actions/FillOrder';
 import WrapEth from './zeroex_actions/WrapEth';
 import GetOrderInfo from './zeroex_actions/OrderInfo';
+import { Web3Wrapper } from '@0xproject/web3-wrapper';
 
 interface Props {
-    zeroEx: ZeroEx;
+    contractWrappers: ContractWrappers;
+    web3Wrapper: Web3Wrapper;
     toastManager: { add: (msg: string, appearance: {}) => void };
 }
 
@@ -34,7 +36,7 @@ export default class ZeroExActions extends React.Component<Props, ZeroExActionsS
             appearance: 'success',
             autoDismiss: true,
         });
-        const receipt = await this.props.zeroEx.awaitTransactionMinedAsync(txHash);
+        const receipt = await this.props.web3Wrapper.awaitTransactionMinedAsync(txHash);
         const appearance = receipt.status == 1 ? 'success' : 'error';
         this.props.toastManager.add(`Transaction Mined: ${txHash}`, {
             appearance,
@@ -46,19 +48,41 @@ export default class ZeroExActions extends React.Component<Props, ZeroExActionsS
         let currentFormRender;
         switch (selectedForm) {
             case FormType.CREATE:
-                currentFormRender = <CreateOrder zeroEx={this.props.zeroEx} onTxSubmitted={this.onTxSubmitted} />;
+                currentFormRender = (
+                    <CreateOrder
+                        web3Wrapper={this.props.web3Wrapper}
+                        contractWrappers={this.props.contractWrappers}
+                        onTxSubmitted={this.onTxSubmitted}
+                    />
+                );
                 break;
             case FormType.CANCEL:
-                currentFormRender = <CancelOrder zeroEx={this.props.zeroEx} onTxSubmitted={this.onTxSubmitted} />;
+                currentFormRender = (
+                    <CancelOrder contractWrappers={this.props.contractWrappers} onTxSubmitted={this.onTxSubmitted} />
+                );
                 break;
             case FormType.FILL:
-                currentFormRender = <FillOrder zeroEx={this.props.zeroEx} onTxSubmitted={this.onTxSubmitted} />;
+                currentFormRender = (
+                    <FillOrder
+                        contractWrappers={this.props.contractWrappers}
+                        web3Wrapper={this.props.web3Wrapper}
+                        onTxSubmitted={this.onTxSubmitted}
+                    />
+                );
                 break;
             case FormType.WRAP_ETH:
-                currentFormRender = <WrapEth zeroEx={this.props.zeroEx} onTxSubmitted={this.onTxSubmitted} />;
+                currentFormRender = (
+                    <WrapEth
+                        web3Wrapper={this.props.web3Wrapper}
+                        contractWrappers={this.props.contractWrappers}
+                        onTxSubmitted={this.onTxSubmitted}
+                    />
+                );
                 break;
             case FormType.GET_ORDER_INFO:
-                currentFormRender = <GetOrderInfo zeroEx={this.props.zeroEx} onTxSubmitted={this.onTxSubmitted} />;
+                currentFormRender = (
+                    <GetOrderInfo contractWrappers={this.props.contractWrappers} onTxSubmitted={this.onTxSubmitted} />
+                );
                 break;
             default:
                 currentFormRender = <div />;

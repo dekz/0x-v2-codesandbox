@@ -1,5 +1,6 @@
-import { RPCSubprovider, Web3ProviderEngine, ZeroEx } from '0x.js';
+import { ContractWrappers, RPCSubprovider, Web3ProviderEngine } from '0x.js';
 import { SignerSubprovider } from '@0xproject/subproviders';
+import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Content, Footer } from 'bloomer';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
@@ -32,17 +33,18 @@ const App = () => {
         providerEngine.addProvider(new RPCSubprovider(KOVAN_RPC));
         providerEngine.start();
 
-        // Initialize 0x.js with the web3 current provider and provide it the network
-        const zeroEx = new ZeroEx(providerEngine, { networkId: KOVAN_NETWORK_ID });
+        const contractWrappers = new ContractWrappers(providerEngine, { networkId: KOVAN_NETWORK_ID });
+        const web3Wrapper = new Web3Wrapper(providerEngine);
+        const erc20TokenWrapper = contractWrappers.erc20Token;
 
         // Browse the individual files for more handy examples
         renderContent = (
             <div>
                 <Welcome />
                 <ToastProvider>
-                    <AccountWithToasts zeroEx={zeroEx} />
-                    <Faucet zeroEx={zeroEx} />
-                    <ZeroExActionsWithToasts zeroEx={zeroEx} />
+                    <AccountWithToasts erc20TokenWrapper={erc20TokenWrapper} web3Wrapper={web3Wrapper} />
+                    <Faucet web3Wrapper={web3Wrapper} />
+                    <ZeroExActionsWithToasts contractWrappers={contractWrappers} web3Wrapper={web3Wrapper} />
                 </ToastProvider>
             </div>
         );
