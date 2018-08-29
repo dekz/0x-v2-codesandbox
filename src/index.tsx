@@ -18,16 +18,14 @@ import ZeroExActions from './ZeroExActions';
 const KOVAN_NETWORK_ID = 42;
 const KOVAN_RPC = 'https://kovan.infura.io';
 
-const AccountWithToasts = withToastManager(Account);
-const ZeroExActionsWithToasts = withToastManager(ZeroExActions);
 const App = () => {
     let renderContent;
     // Detect if Web3 is found, if not, ask the user to install Metamask
-    if ((window as any).web3) {
-        const web3 = (window as any).web3;
+    const web3 = (window as any).web3;
+    if (web3) {
         // Set up Web3 Provider Engine with a few helper Subproviders from 0x
         const providerEngine = new Web3ProviderEngine({ pollingInterval: 10000 });
-        // All signing based requests till go to the SignerSubprovider
+        // All signing based requests are handled by the SignerSubprovider
         providerEngine.addProvider(new SignerSubprovider(web3.currentProvider));
         // All other requests will fall through to the next subprovider, such as data requests
         providerEngine.addProvider(new RPCSubprovider(KOVAN_RPC));
@@ -37,14 +35,17 @@ const App = () => {
         const web3Wrapper = new Web3Wrapper(providerEngine);
         const erc20TokenWrapper = contractWrappers.erc20Token;
 
+        const AccountWithToasts = withToastManager(Account);
+        const ZeroExActionsWithToasts = withToastManager(ZeroExActions);
+
         // Browse the individual files for more handy examples
         renderContent = (
             <div>
                 <Welcome />
                 <ToastProvider>
                     <AccountWithToasts erc20TokenWrapper={erc20TokenWrapper} web3Wrapper={web3Wrapper} />
-                    <Faucet web3Wrapper={web3Wrapper} />
                     <ZeroExActionsWithToasts contractWrappers={contractWrappers} web3Wrapper={web3Wrapper} />
+                    <Faucet web3Wrapper={web3Wrapper} />
                 </ToastProvider>
             </div>
         );
@@ -54,9 +55,7 @@ const App = () => {
     return (
         <div>
             <Nav />
-            <Content className="container" style={{ marginTop: '20px' }}>
-                {renderContent}
-            </Content>
+            <Content className="container">{renderContent}</Content>
             <Footer />
         </div>
     );

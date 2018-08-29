@@ -1,42 +1,31 @@
-import { BigNumber, ContractWrappers, SignedOrder } from '0x.js';
+import { ContractWrappers, SignedOrder } from '0x.js';
 import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, PanelBlock, TextArea } from 'bloomer';
+import { actions, dispatch } from 'codesandbox-api';
 import * as React from 'react';
 import { PanelBlockField } from '../helpers/PanelBlockField';
+import { parseJSONSignedOrder } from '../helpers/utils';
 
 interface Props {
     contractWrappers: ContractWrappers;
     web3Wrapper: Web3Wrapper;
     onTxSubmitted: (txHash: string) => void;
 }
-
 interface FillOrderState {
     signedOrder?: string;
 }
+
 export default class FillOrder extends React.Component<Props, FillOrderState> {
     fillOrder = async (signedOrder: SignedOrder): Promise<string> => {
-        const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
-        const account = addresses[0];
-        const txHash = await this.props.contractWrappers.exchange.fillOrderAsync(
-            signedOrder,
-            signedOrder.takerAssetAmount,
-            account,
-        );
+        const { web3Wrapper, contractWrappers } = this.props;
+        // Query all available addresses
+        const addresses = await web3Wrapper.getAvailableAddressesAsync();
+        // Taker is the first address
+        const takerAddress = addresses[0];
+        const takerFillAmount = signedOrder.takerAssetAmount;
+        // Call fillOrder on the Exchange contract
+        const txHash = await contractWrappers.exchange.fillOrderAsync(signedOrder, takerFillAmount, takerAddress);
         return txHash;
-    };
-    fillOrderClick = async () => {
-        const signedOrderJSON = this.state.signedOrder;
-        if (signedOrderJSON) {
-            const signedOrder = JSON.parse(signedOrderJSON);
-            signedOrder.salt = new BigNumber(signedOrder.salt);
-            signedOrder.makerAssetAmount = new BigNumber(signedOrder.makerAssetAmount);
-            signedOrder.takerAssetAmount = new BigNumber(signedOrder.takerAssetAmount);
-            signedOrder.makerFee = new BigNumber(signedOrder.makerFee);
-            signedOrder.takerFee = new BigNumber(signedOrder.takerFee);
-            signedOrder.expirationTimeSeconds = new BigNumber(signedOrder.expirationTimeSeconds);
-            const txHash = await this.fillOrder(signedOrder as SignedOrder);
-            this.props.onTxSubmitted(txHash);
-        }
     };
     render() {
         return (
@@ -44,18 +33,20 @@ export default class FillOrder extends React.Component<Props, FillOrderState> {
                 <PanelBlock>
                     <div>
                         Orders are filled when a taker submits them to the blockchain. This example executes a
-                        fillOrder, filling the entire amount of the order.
+                        fillOrder, filling the entire amount of the order.{' '}
+                        <a onClick={() => dispatch(actions.editor.openModule('/src/zeroex_actions/FillOrder.tsx', 19))}>
+                            View the code
+                        </a>
+                        .
                     </div>
                 </PanelBlock>
                 <PanelBlockField label="Order">
                     <TextArea
                         type="text"
-                        placeholder="Order Details"
+                        placeholder="Order"
                         onChange={e => {
                             const value = (e.target as any).value;
-                            this.setState(prev => {
-                                return { ...prev, signedOrder: value };
-                            });
+                            this.setState(prev => ({ ...prev, signedOrder: value }));
                         }}
                     />
                 </PanelBlockField>
@@ -73,4 +64,12 @@ export default class FillOrder extends React.Component<Props, FillOrderState> {
             </div>
         );
     }
+    fillOrderClick = async () => {
+        const signedOrderJSON = this.state.signedOrder;
+        if (signedOrderJSON) {
+            const signedOrder = parseJSONSignedOrder(signedOrderJSON);
+            const txHash = await this.fillOrder(signedOrder);
+            this.props.onTxSubmitted(txHash);
+        }
+    };
 }

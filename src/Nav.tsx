@@ -20,7 +20,7 @@ export class Nav extends React.Component<NavProps, NavState> {
                             src="https://0xproject.com/images/favicon/favicon-2-32x32.png"
                             style={{ marginRight: '10px' }}
                         />
-                        <strong> 0x.js V2 Sandbox </strong>
+                        <strong> 0x Sandbox </strong>
                     </NavbarItem>
                 </NavbarBrand>
                 <NavbarMenu isActive={this.state.isActive}>

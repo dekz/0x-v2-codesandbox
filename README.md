@@ -1,5 +1,3 @@
-# 0x.js v2 Sandbox
+# 0x CodeSandbox
 
-<img width="1333" alt="screen shot 2018-08-22 at 9 01 21 pm" src="https://user-images.githubusercontent.com/27389/44459965-bc343c80-a64e-11e8-9369-ab9f09845dce.png">
-
-[Code Sandbox](https://codesandbox.io/s/github/dekz/0x-v2-codesandbox)
+<a href="https://codesandbox.io/s/github/0xproject/0x-codesandbox"><img width="1411" alt="screen shot 2018-08-29 at 2 23 44 pm" src="https://user-images.githubusercontent.com/27389/44765479-32c5c280-ab98-11e8-82b6-257489a2a8fb.png"></a>

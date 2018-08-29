@@ -3,7 +3,7 @@ import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, Column, Columns, Content, Icon, Subtitle, Table } from 'bloomer';
 import * as _ from 'lodash';
 import * as React from 'react';
-import { tokensByNetwork } from './helpers/tokens';
+import { tokensByNetwork, ETHER_TOKEN } from './helpers/tokens';
 
 interface Props {
     web3Wrapper: Web3Wrapper;
@@ -17,103 +17,101 @@ interface Token {
     symbol: string;
     decimals: number;
 }
-interface TokenBalance {
+interface TokenBalanceAllowance {
     token: Token;
     balance: BigNumber;
     allowance: BigNumber;
+    tradeable: boolean;
 }
-
-type AddressTokenBalance = { [address: string]: TokenBalance[] };
 
 interface AccountState {
-    balances: AddressTokenBalance;
-    accounts: string[];
+    balances: { [address: string]: TokenBalanceAllowance[] };
     selectedAccount: string;
 }
-
-const ETHER_TOKEN_NAME = 'ETH';
 
 export default class Account extends React.Component<Props, AccountState> {
     constructor(props: Props) {
         super(props);
-        this.state = { accounts: [''], balances: {}, selectedAccount: '' };
+        this.state = { balances: {}, selectedAccount: '' };
         this.fetchAccountDetailsAsync();
+        setInterval(() => {
+            this.checkAccountChange();
+        }, 2000);
     }
-
     fetchAccountDetailsAsync = async () => {
-        const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
+        const { web3Wrapper, erc20TokenWrapper } = this.props;
+        const { balances } = this.state;
+        const addresses = await web3Wrapper.getAvailableAddressesAsync();
         const address = addresses[0];
         if (!address) {
             return;
         }
-        const networkId = await this.props.web3Wrapper.getNetworkIdAsync();
+        const networkId = await web3Wrapper.getNetworkIdAsync();
         const tokens = tokensByNetwork[networkId];
-        const balances = {};
-        const allowances = {};
-        balances[address] = {};
-        allowances[address] = {};
-        // Fetch all the Balances for all of the tokens in the Token Registry
+        // Fetch all the Balances for all of the tokens
         const allBalancesAsync = _.map(
             tokens,
-            async (token: Token): Promise<TokenBalance> => {
-                try {
-                    const balance = await this.props.erc20TokenWrapper.getBalanceAsync(token.address, address);
-                    const allowance = await this.props.erc20TokenWrapper.getProxyAllowanceAsync(token.address, address);
-                    const numberBalance = new BigNumber(balance);
-                    return { token: token, balance: numberBalance, allowance };
-                } catch (e) {
-                    console.log(e);
-                    const zero = new BigNumber(0);
-                    return { token: token, balance: zero, allowance: zero };
-                }
+            async (token: Token): Promise<TokenBalanceAllowance> => {
+                const balance = await erc20TokenWrapper.getBalanceAsync(token.address, address);
+                const allowance = await erc20TokenWrapper.getProxyAllowanceAsync(token.address, address);
+                const numberBalance = new BigNumber(balance);
+                return { token: token, balance: numberBalance, allowance, tradeable: true };
             },
         );
 
-        // Convert all of the Units into more Human Readable numbers
-        // Many ERC20 tokens go to 18 decimal places
         const results = await Promise.all(allBalancesAsync);
         balances[address] = results;
-        // Fetch the Balance in Ether
-        try {
-            const ethBalance = await this.props.web3Wrapper.getBalanceInWeiAsync(address);
-            if (ethBalance) {
-                const ethBalanceNumber = new BigNumber(ethBalance);
-                balances[address] = [
-                    ...balances[address],
-                    {
-                        token: { name: ETHER_TOKEN_NAME, decimals: 18, symbol: 'ETH' },
-                        balance: ethBalanceNumber,
-                        allowance: new BigNumber(0),
-                    },
-                ];
-            }
-        } catch (e) {
-            console.log(e);
-        }
+        // Fetch the Balance of Ether
+        const weiBalance = await web3Wrapper.getBalanceInWeiAsync(address);
+        balances[address] = [
+            ...balances[address],
+            {
+                token: ETHER_TOKEN,
+                balance: weiBalance,
+                allowance: new BigNumber(0),
+                tradeable: false,
+            } as TokenBalanceAllowance,
+        ];
 
         // Update the state in React
         this.setState(prev => {
             const prevSelectedAccount = prev.selectedAccount;
-            const selectedAccount = prevSelectedAccount == '' ? address : prevSelectedAccount;
-            return { ...prev, balances, accounts: addresses, allowances, selectedAccount };
+            const selectedAccount = prevSelectedAccount !== address ? address : prevSelectedAccount;
+            return { ...prev, balances, selectedAccount };
         });
+    };
+    checkAccountChange = async () => {
+        const { web3Wrapper } = this.props;
+        const { selectedAccount } = this.state;
+        const addresses = await web3Wrapper.getAvailableAddressesAsync();
+        const address = addresses[0];
+        if (!address) {
+            return;
+        }
+        if (selectedAccount !== address) {
+            const balances = {};
+            this.setState(prev => {
+                return { ...prev, balances, selectedAccount };
+            });
+            this.fetchAccountDetailsAsync();
+        }
     };
     setProxyAllowanceAsync = async (tokenAddress: string) => {
         const { erc20TokenWrapper } = this.props;
-        const { accounts } = this.state;
-        const account = accounts[0];
-        const txHash = await erc20TokenWrapper.setUnlimitedProxyAllowanceAsync(tokenAddress, account);
+        const { selectedAccount } = this.state;
+        const txHash = await erc20TokenWrapper.setUnlimitedProxyAllowanceAsync(tokenAddress, selectedAccount);
         this.transactionSubmitted(txHash);
     };
     transactionSubmitted = async (txHash: string) => {
+        const { toastManager, web3Wrapper } = this.props;
         console.log(txHash);
-        this.props.toastManager.add(`Transaction Submitted: ${txHash}`, {
+        toastManager.add(`Transaction Submitted: ${txHash}`, {
             appearance: 'success',
             autoDismiss: true,
         });
-        const receipt = await this.props.web3Wrapper.awaitTransactionMinedAsync(txHash);
+        const receipt = await web3Wrapper.awaitTransactionMinedAsync(txHash);
         const appearance = receipt.status === 1 ? 'success' : 'error';
-        this.props.toastManager.add(`Transaction Mined: ${txHash}`, {
+        toastManager.add(`Transaction Mined: ${txHash}`, {
             appearance,
             autoDismiss: true,
         });
@@ -121,9 +119,8 @@ export default class Account extends React.Component<Props, AccountState> {
         this.fetchAccountDetailsAsync();
     };
     render() {
-        const { balances } = this.state;
-        const account = this.state.selectedAccount;
-        const userBalances = balances[account];
+        const { balances, selectedAccount } = this.state;
+        const accountBalances = balances[selectedAccount];
         const fetchBalancesButton = (
             <Button isSize="small" isColor="info" id="fetchAccountBalances" onClick={this.fetchAccountDetailsAsync}>
                 Fetch Balances
@@ -131,37 +128,28 @@ export default class Account extends React.Component<Props, AccountState> {
         );
         let contentRender = (
             <div>
-                <strong>Detecting Metamask...</strong>
-                <p> Please ensure Metamask is unlocked </p>
+                <strong>Fetching Balances...</strong>
             </div>
         );
 
-        if (userBalances) {
-            const balancesString = _.map(userBalances, (tokenBalance: TokenBalance) => {
-                const name = tokenBalance.token.name;
-                const symbol = tokenBalance.token.symbol;
+        if (accountBalances) {
+            const balancesString = _.map(accountBalances, (tokenBalance: TokenBalanceAllowance) => {
+                const { name, symbol } = tokenBalance.token;
+                // Convert to the human readable amount based off the token decimals
                 const balance = Web3Wrapper.toUnitAmount(tokenBalance.balance, tokenBalance.token.decimals);
-                const allowance = Web3Wrapper.toUnitAmount(tokenBalance.allowance, tokenBalance.token.decimals);
-                const allowanceRender = allowance.greaterThan(0) ? (
-                    <Icon isSize="small" className="fa fa-check-circle" style={{ color: 'rgb(77, 197, 92)' }} />
-                ) : (
-                    <a href="#" onClick={() => this.setProxyAllowanceAsync(tokenBalance.token.address)}>
-                        <Icon isSize="small" className="fa fa-lock" />
-                    </a>
-                );
-                return balance ? (
+                const balanceRender = balance.toFixed(4);
+                const allowanceRender = this.renderAllowanceForTokenBalance(tokenBalance);
+                return (
                     <tr key={name}>
                         <td>{symbol}</td>
-                        <td>{balance.toFixed(4)}</td>
+                        <td>{balanceRender}</td>
                         <td>{allowanceRender}</td>
                     </tr>
-                ) : (
-                    <tr />
                 );
             });
             contentRender = (
                 <div>
-                    <Table isStriped={false} isNarrow={true} className="is-hoverable">
+                    <Table>
                         <thead>
                             <tr>
                                 <th>Token</th>
@@ -177,12 +165,33 @@ export default class Account extends React.Component<Props, AccountState> {
 
         return (
             <Content style={{ marginTop: '15px' }}>
-                <Subtitle isSize={6}>Account: {account}</Subtitle>
+                Below you will find the Account and token balances. The lock icon ({' '}
+                <Icon isSize="small" className="fa fa-lock" />) indicates that this token is not tradeable on 0x, to
+                unlock the token click the lock icon. The tick icon ({' '}
+                <Icon isSize="small" className="fa fa-check-circle" style={{ color: 'rgb(77, 197, 92)' }} /> ) indicates
+                that this token is tradeable on 0x.
+                <Subtitle isSize={6}>Account: {selectedAccount}</Subtitle>
                 <Columns>
                     <Column isSize={3}>{contentRender}</Column>
                 </Columns>
                 {fetchBalancesButton}
             </Content>
         );
+    }
+
+    renderAllowanceForTokenBalance(tokenBalance: TokenBalanceAllowance) {
+        let allowanceRender;
+        if (tokenBalance.tradeable) {
+            allowanceRender = tokenBalance.allowance.greaterThan(0) ? (
+                <Icon isSize="small" className="fa fa-check-circle" style={{ color: 'rgb(77, 197, 92)' }} />
+            ) : (
+                <a href="#" onClick={() => this.setProxyAllowanceAsync(tokenBalance.token.address)}>
+                    <Icon isSize="small" className="fa fa-lock" />
+                </a>
+            );
+        } else {
+            allowanceRender = <div />;
+        }
+        return allowanceRender;
     }
 }

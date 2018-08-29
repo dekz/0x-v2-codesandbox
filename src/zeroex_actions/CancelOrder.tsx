@@ -1,7 +1,9 @@
-import { BigNumber, ContractWrappers, orderHashUtils, OrderStatus } from '0x.js';
+import { ContractWrappers, orderHashUtils, OrderStatus } from '0x.js';
 import { Button, PanelBlock, TextArea } from 'bloomer';
+import { actions, dispatch } from 'codesandbox-api';
 import * as React from 'react';
 import { PanelBlockField } from '../helpers/PanelBlockField';
+import { parseJSONSignedOrder } from '../helpers/utils';
 
 interface Props {
     contractWrappers: ContractWrappers;
@@ -13,22 +15,21 @@ interface CancelOrderState {
 }
 
 export default class CancelOrder extends React.Component<Props, CancelOrderState> {
-    cancelClick = async () => {
+    cancelOrder = async () => {
         const { order } = this.state;
+        const { contractWrappers, onTxSubmitted } = this.props;
         if (order) {
-            const signedOrder = JSON.parse(order);
-            signedOrder.salt = new BigNumber(signedOrder.salt);
-            signedOrder.makerAssetAmount = new BigNumber(signedOrder.makerAssetAmount);
-            signedOrder.takerAssetAmount = new BigNumber(signedOrder.takerAssetAmount);
-            signedOrder.makerFee = new BigNumber(signedOrder.makerFee);
-            signedOrder.takerFee = new BigNumber(signedOrder.takerFee);
-            signedOrder.expirationTimeSeconds = new BigNumber(signedOrder.expirationTimeSeconds);
-            const orderHashHex = orderHashUtils.getOrderHashHex(signedOrder);
-            const orderInfo = await this.props.contractWrappers.exchange.getOrderInfoAsync(signedOrder);
+            // Parse the Order JSON into types (converting into BigNumber)
+            const signedOrder = parseJSONSignedOrder(order);
+            // Retrieve the order info, only cancel fillable orders
+            const orderInfo = await contractWrappers.exchange.getOrderInfoAsync(signedOrder);
             if (orderInfo.orderStatus == OrderStatus.FILLABLE) {
-                const txHash = await this.props.contractWrappers.exchange.cancelOrderAsync(signedOrder);
-                this.props.onTxSubmitted(txHash);
+                // Call Cancel Order on the Exchange contract
+                const txHash = await contractWrappers.exchange.cancelOrderAsync(signedOrder);
+                onTxSubmitted(txHash);
             } else {
+                // Generate the Order Hash for this order
+                const orderHashHex = orderHashUtils.getOrderHashHex(signedOrder);
                 console.log('Order already filled or cancelled: ', orderHashHex);
             }
         }
@@ -37,7 +38,17 @@ export default class CancelOrder extends React.Component<Props, CancelOrderState
         return (
             <div>
                 <PanelBlock>
-                    <div>Orders must be cancelled on-chain (or their specified expiry time passes).</div>
+                    <div>
+                        Orders must be cancelled on-chain (or their specified expiry time passes).{' '}
+                        <a
+                            onClick={() =>
+                                dispatch(actions.editor.openModule('/src/zeroex_actions/CancelOrder.tsx', 18))
+                            }
+                        >
+                            View the code
+                        </a>
+                        .
+                    </div>
                 </PanelBlock>
                 <PanelBlockField label="Order">
                     <TextArea
@@ -53,7 +64,7 @@ export default class CancelOrder extends React.Component<Props, CancelOrderState
                 </PanelBlockField>
                 <PanelBlock>
                     <Button
-                        onClick={() => this.cancelClick()}
+                        onClick={() => this.cancelOrder()}
                         isFullWidth={true}
                         isSize="small"
                         isColor="primary"

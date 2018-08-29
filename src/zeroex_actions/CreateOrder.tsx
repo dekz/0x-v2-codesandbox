@@ -1,89 +1,106 @@
-import { ContractWrappers, assetDataUtils, signatureUtils } from '0x.js';
-import { generatePseudoRandomSalt, orderHashUtils } from '@0xproject/order-utils';
-import { Order, SignerType } from '@0xproject/types';
-import { BigNumber } from 'bignumber.js';
+import {
+    assetDataUtils,
+    BigNumber,
+    ContractWrappers,
+    generatePseudoRandomSalt,
+    Order,
+    orderHashUtils,
+    signatureUtils,
+    SignedOrder,
+    SignerType,
+} from '0x.js';
+import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, Control, Field, Input, PanelBlock, Select, TextArea } from 'bloomer';
+import { actions, dispatch } from 'codesandbox-api';
 import * as _ from 'lodash';
 import * as React from 'react';
 import { PanelBlockField } from '../helpers/PanelBlockField';
-import { tokensByNetwork } from '../helpers/tokens';
-import { Web3Wrapper } from '@0xproject/web3-wrapper';
-
-const NULL_ADDRESS = '0x0000000000000000000000000000000000000000';
+import { tokensByNetwork, tokens } from '../helpers/tokens';
+import { NULL_ADDRESS, ZERO } from '../helpers/utils';
 
 interface Props {
     contractWrappers: ContractWrappers;
     web3Wrapper: Web3Wrapper;
     onTxSubmitted: (txHash: string) => void;
 }
-
 interface CreateOrderState {
     makerToken: string;
     takerToken: string;
     makerAmount: string;
     takerAmount: string;
-    signedOrder?: string;
+    signedOrder?: SignedOrder;
     orderHash?: string;
 }
+
 export default class CreateOrder extends React.Component<Props, CreateOrderState> {
     constructor(props: Props) {
         super(props);
-        this.state = { makerToken: 'ZRX', takerToken: 'WETH', makerAmount: '1', takerAmount: '1' };
+        this.state = {
+            makerToken: tokens.ZRX.symbol,
+            takerToken: tokens.WETH.symbol,
+            makerAmount: '1',
+            takerAmount: '1',
+        };
     }
-    createOrderTokenSelected = (symbol: string, maker: boolean) => {
-        this.setState(prevState => {
-            return maker ? { ...prevState, makerToken: symbol } : { ...prevState, takerToken: symbol };
-        });
-    };
-    createOrderTokenTokenAmount = (amount: string, maker: boolean) => {
-        this.setState(prevState => {
-            return maker ? { ...prevState, makerAmount: amount } : { ...prevState, takerAmount: amount };
-        });
-    };
-    createOrderClick = async () => {
+    createOrder = async (): Promise<SignedOrder> => {
         const { makerToken, makerAmount, takerToken, takerAmount } = this.state;
-        const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
-        const account = addresses[0];
-        const tokens = tokensByNetwork[42];
+        const { web3Wrapper, contractWrappers } = this.props;
+        // Query the available addresses
+        const addresses = await web3Wrapper.getAvailableAddressesAsync();
+        // Retrieve the network for the correct token addresses
+        const networkId = await web3Wrapper.getNetworkIdAsync();
+        // Use the first account as the maker
+        const makerAddress = addresses[0];
+        const tokens = tokensByNetwork[networkId];
+        // Encode the selected makerToken as assetData for 0x
         const makerAssetData = assetDataUtils.encodeERC20AssetData(tokens[makerToken].address);
+        // Encode the selected takerToken as assetData for 0x
         const takerAssetData = assetDataUtils.encodeERC20AssetData(tokens[takerToken].address);
-        const exchangeAddress = this.props.contractWrappers.exchange.getContractAddress();
+        const exchangeAddress = contractWrappers.exchange.getContractAddress();
+        // Create the order
         const order: Order = {
-            senderAddress: NULL_ADDRESS,
-            feeRecipientAddress: NULL_ADDRESS,
-            makerAddress: account,
-            takerAddress: NULL_ADDRESS,
-            makerFee: new BigNumber(0),
-            takerFee: new BigNumber(0),
-            makerAssetAmount: new BigNumber(makerAmount),
-            takerAssetAmount: new BigNumber(takerAmount),
-            salt: generatePseudoRandomSalt(),
-            expirationTimeSeconds: new BigNumber(Date.now() + 10 * 60 * 1000),
+            makerAddress, // maker is the first address
+            takerAddress: NULL_ADDRESS, // taker is open and can be filled by anyone
+            makerAssetAmount: new BigNumber(makerAmount), // The maker token amount
+            takerAssetAmount: new BigNumber(takerAmount), // The taker token amount
+            expirationTimeSeconds: new BigNumber(Date.now() + 10 * 60), // Time when this order expires
+            makerFee: ZERO, // 0 maker fees
+            takerFee: ZERO, // 0 taker fees
+            feeRecipientAddress: NULL_ADDRESS, // No fee recipient
+            senderAddress: NULL_ADDRESS, // Sender address is open and can be submitted by anyone
+            salt: generatePseudoRandomSalt(), // Random value to provide uniqueness
             makerAssetData,
             takerAssetData,
             exchangeAddress,
         };
+        // Generate the order hash for the order
         const orderHashHex = orderHashUtils.getOrderHashHex(order);
-        const provider = this.props.web3Wrapper.getProvider();
+        const provider = web3Wrapper.getProvider();
+        // The maker signs the order as a proof
         const signature = await signatureUtils.ecSignOrderHashAsync(
             provider,
             orderHashHex,
-            account,
+            makerAddress,
             SignerType.Metamask,
         );
-        const signedOrderJSON = JSON.stringify({ ...order, signature }, null, 2);
+        const signedOrder = { ...order, signature };
+        // Store the signed Order
         this.setState(prevState => {
-            return { ...prevState, signedOrder: signedOrderJSON, orderHash: orderHashHex };
+            return { ...prevState, signedOrder, orderHash: orderHashHex };
         });
         console.log('orderHash', orderHashHex);
-        console.log(signedOrderJSON);
+        console.log(JSON.stringify(signedOrder, null, 2));
+
+        return signedOrder;
     };
     render() {
         const buildTokenSelector = (maker: boolean) => {
             const selected = maker ? this.state.makerToken : this.state.takerToken;
+            console.log(Object.keys(tokens));
+            console.log(selected);
             return (
                 <Select onChange={e => this.createOrderTokenSelected((e.target as any).value, maker)} value={selected}>
-                    {_.map(Object.keys(tokensByNetwork[42]), token => {
+                    {_.map(Object.keys(tokens), token => {
                         return (
                             <option key={`${token}${maker}`} value={token}>
                                 {token}
@@ -99,48 +116,62 @@ export default class CreateOrder extends React.Component<Props, CreateOrderState
                     <Input value={this.state.orderHash} readOnly={true} />
                 </PanelBlockField>
                 <PanelBlockField label="Signed Order">
-                    <TextArea value={this.state.signedOrder} type="text" readOnly={true} />
+                    <TextArea value={JSON.stringify(this.state.signedOrder, null, 2)} type="text" readOnly={true} />
                 </PanelBlockField>
             </div>
         ) : (
             <div />
+        );
+        const makerTokenRender = (
+            <PanelBlockField label="Maker Token">
+                <Field hasAddons={true}>
+                    <Control>{buildTokenSelector(true)}</Control>
+                    <Input
+                        onChange={e => this.createOrderTokenTokenAmount((e.target as any).value, true)}
+                        value={this.state.makerAmount}
+                        type="text"
+                        placeholder="Amount"
+                    />
+                </Field>
+            </PanelBlockField>
+        );
+        const takerTokenRender = (
+            <PanelBlockField label="Taker Token">
+                <Field hasAddons={true}>
+                    <Control>{buildTokenSelector(false)}</Control>
+                    <Control isExpanded={true}>
+                        <Input
+                            onChange={e => this.createOrderTokenTokenAmount((e.target as any).value, false)}
+                            value={this.state.takerAmount}
+                            type="text"
+                            placeholder="Amount"
+                        />
+                    </Control>
+                </Field>
+            </PanelBlockField>
         );
         return (
             <div>
                 <PanelBlock>
                     <div>
                         Creates a 0x order, specifying the Maker and Taker tokens and their amounts. Orders are signed
-                        by the maker. Takers find these signed orders and "fill" them by submitting to the blockchain.
+                        by the maker. Takers find these signed orders and "fill" them by submitting to the blockchain.{' '}
+                        <a
+                            onClick={() =>
+                                dispatch(actions.editor.openModule('/src/zeroex_actions/CreateOrder.tsx', 40))
+                            }
+                        >
+                            View the code
+                        </a>
+                        .
                     </div>
                 </PanelBlock>
-                <PanelBlockField label="Maker Token">
-                    <Field hasAddons={true}>
-                        <Control>{buildTokenSelector(true)}</Control>
-                        <Input
-                            onChange={e => this.createOrderTokenTokenAmount((e.target as any).value, true)}
-                            value={this.state.makerAmount}
-                            type="text"
-                            placeholder="Amount"
-                        />
-                    </Field>
-                </PanelBlockField>
-                <PanelBlockField label="Taker Token">
-                    <Field hasAddons={true}>
-                        <Control>{buildTokenSelector(false)}</Control>
-                        <Control isExpanded={true}>
-                            <Input
-                                onChange={e => this.createOrderTokenTokenAmount((e.target as any).value, false)}
-                                value={this.state.takerAmount}
-                                type="text"
-                                placeholder="Amount"
-                            />
-                        </Control>
-                    </Field>
-                </PanelBlockField>
+                {makerTokenRender}
+                {takerTokenRender}
                 {signedOrderRender}
                 <PanelBlock>
                     <Button
-                        onClick={() => this.createOrderClick()}
+                        onClick={this.createOrder}
                         isFullWidth={true}
                         isSize="small"
                         isColor="primary"
@@ -152,4 +183,14 @@ export default class CreateOrder extends React.Component<Props, CreateOrderState
             </div>
         );
     }
+    createOrderTokenSelected = (symbol: string, maker: boolean) => {
+        this.setState(prevState => {
+            return maker ? { ...prevState, makerToken: symbol } : { ...prevState, takerToken: symbol };
+        });
+    };
+    createOrderTokenTokenAmount = (amount: string, maker: boolean) => {
+        this.setState(prevState => {
+            return maker ? { ...prevState, makerAmount: amount } : { ...prevState, takerAmount: amount };
+        });
+    };
 }

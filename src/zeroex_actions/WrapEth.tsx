@@ -1,42 +1,53 @@
 import { BigNumber, ContractWrappers } from '0x.js';
+import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, Control, Field, Input, PanelBlock } from 'bloomer';
+import { actions, dispatch } from 'codesandbox-api';
 import * as React from 'react';
 import { PanelBlockField } from '../helpers/PanelBlockField';
-import { tokensByNetwork } from '../helpers/tokens';
-import { Web3Wrapper } from '@0xproject/web3-wrapper';
 
 interface Props {
     contractWrappers: ContractWrappers;
     web3Wrapper: Web3Wrapper;
     onTxSubmitted: (txHash: string) => void;
 }
-
 interface WrapEthState {
     amount: string;
 }
+
 export default class WrapEth extends React.Component<Props, WrapEthState> {
     constructor(props: Props) {
         super(props);
         this.state = { amount: '1' };
     }
-    wrapEthClick = async (wrap: boolean) => {
-        const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
-        const account = addresses[0];
-        const tokens = tokensByNetwork[42];
-        const etherTokenAddress = tokens['WETH'].address;
-        const amount = new BigNumber(1);
-        const txHash = wrap
-            ? await this.props.contractWrappers.etherToken.depositAsync(etherTokenAddress, amount, account)
-            : await this.props.contractWrappers.etherToken.withdrawAsync(etherTokenAddress, amount, account);
-        this.props.onTxSubmitted(txHash);
+    wrapOrUnwrapEth = async (wrap: boolean) => {
+        const { web3Wrapper, contractWrappers, onTxSubmitted } = this.props;
+        const { amount } = this.state;
+        // Retrieve the ether token address
+        const etherTokenAddress = contractWrappers.etherToken.getContractAddressIfExists();
+        if (etherTokenAddress) {
+            // List all of the available addresses
+            const addresses = await web3Wrapper.getAvailableAddressesAsync();
+            // The first address is one the which deposits or withdraws Eth
+            const account = addresses[0];
+            const weiAmount = new BigNumber(amount);
+            // Call deposit or withdraw on the ethertoken
+            const txHash = wrap
+                ? await contractWrappers.etherToken.depositAsync(etherTokenAddress, weiAmount, account)
+                : await contractWrappers.etherToken.withdrawAsync(etherTokenAddress, weiAmount, account);
+            onTxSubmitted(txHash);
+        }
     };
     render() {
         return (
             <div>
                 <PanelBlock>
                     <div>
-                        Since ETH is not an ERC20 token it needs to first be wrapped to be exchanged on 0x. ETH can be
-                        wrapped to become wETH and wETH can be unwrapped get back to ETH
+                        ETH is not an ERC20 token and it must first be wrapped to be used in 0x. ETH can be wrapped to
+                        become wETH and wETH can be unwrapped retrieve ETH.{' '}
+                        <a onClick={() => dispatch(actions.editor.openModule('/src/zeroex_actions/WrapEth.tsx', 23))}>
+                            View the code
+                        </a>
+                        .
                     </div>
                 </PanelBlock>
                 <PanelBlockField label="Amount">
@@ -52,19 +63,14 @@ export default class WrapEth extends React.Component<Props, WrapEthState> {
                         <Control>
                             <Button
                                 style={{ marginRight: '10px' }}
-                                onClick={() => this.wrapEthClick(true)}
+                                onClick={this.wrapEth}
                                 isSize="small"
                                 isColor="primary"
                                 id="wrap"
                             >
                                 Wrap
                             </Button>
-                            <Button
-                                onClick={() => this.wrapEthClick(false)}
-                                isSize="small"
-                                isColor="primary"
-                                id="unwrap"
-                            >
+                            <Button onClick={this.unwrapEth} isSize="small" isColor="primary" id="unwrap">
                                 Unwrap
                             </Button>
                         </Control>
@@ -73,4 +79,6 @@ export default class WrapEth extends React.Component<Props, WrapEthState> {
             </div>
         );
     }
+    wrapEth = async () => this.wrapOrUnwrapEth(true);
+    unwrapEth = async () => this.wrapOrUnwrapEth(false);
 }

@@ -1,7 +1,9 @@
-import { OrderInfo, OrderStatus, orderHashUtils, BigNumber, ContractWrappers } from '0x.js';
+import { ContractWrappers, orderHashUtils, OrderInfo, OrderStatus } from '0x.js';
 import { Button, Input, PanelBlock, TextArea } from 'bloomer';
 import * as React from 'react';
 import { PanelBlockField } from '../helpers/PanelBlockField';
+import { parseJSONSignedOrder } from '../helpers/utils';
+import { dispatch, actions } from 'codesandbox-api';
 
 interface Props {
     contractWrappers: ContractWrappers;
@@ -17,37 +19,45 @@ interface OrderInfoState {
 export default class GetOrderInfo extends React.Component<Props, OrderInfoState> {
     getInfoClick = async () => {
         const { order } = this.state;
+        const { contractWrappers } = this.props;
         if (order) {
-            const signedOrder = JSON.parse(order);
-            signedOrder.salt = new BigNumber(signedOrder.salt);
-            signedOrder.makerAssetAmount = new BigNumber(signedOrder.makerAssetAmount);
-            signedOrder.takerAssetAmount = new BigNumber(signedOrder.takerAssetAmount);
-            signedOrder.makerFee = new BigNumber(signedOrder.makerFee);
-            signedOrder.takerFee = new BigNumber(signedOrder.takerFee);
-            signedOrder.expirationTimeSeconds = new BigNumber(signedOrder.expirationTimeSeconds);
+            // Parse the Order JSON into types (converting into BigNumber)
+            const signedOrder = parseJSONSignedOrder(order);
+            // Generate the Order Hash for the order
             const orderHashHex = orderHashUtils.getOrderHashHex(signedOrder);
-            const orderInfo = await this.props.contractWrappers.exchange.getOrderInfoAsync(signedOrder);
+            // call getOrderInfo on the Exchange contract
+            const orderInfo = await contractWrappers.exchange.getOrderInfoAsync(signedOrder);
             this.setState(prev => {
                 return { ...prev, orderHash: orderHashHex, orderInfo };
             });
         }
     };
     render() {
-        const orderInfoRender = this.state.orderInfo ? (
-            <div>
-                <PanelBlockField label="Hash">
-                    <Input value={this.state.orderHash} readOnly={true} />
-                </PanelBlockField>
-                <PanelBlockField label="Status">{OrderStatus[this.state.orderInfo.orderStatus]}</PanelBlockField>
-                <PanelBlockField label="Filled Amount">
-                    {this.state.orderInfo.orderTakerAssetFilledAmount.toString()}
-                </PanelBlockField>
-            </div>
-        ) : (
-            <div />
-        );
+        const orderInfoRender =
+            this.state && this.state.orderInfo ? (
+                <div>
+                    <PanelBlockField label="Hash">
+                        <Input value={this.state.orderHash} readOnly={true} />
+                    </PanelBlockField>
+                    <PanelBlockField label="Status">{OrderStatus[this.state.orderInfo.orderStatus]}</PanelBlockField>
+                    <PanelBlockField label="Filled Amount">
+                        {this.state.orderInfo.orderTakerAssetFilledAmount.toString()}
+                    </PanelBlockField>
+                </div>
+            ) : (
+                <div />
+            );
         return (
             <div>
+                <PanelBlock>
+                    <div>
+                        Retrieve information about the Order from the Exchange contract.{' '}
+                        <a onClick={() => dispatch(actions.editor.openModule('/src/zeroex_actions/OrderInfo.tsx', 20))}>
+                            View the code
+                        </a>
+                        .
+                    </div>
+                </PanelBlock>
                 <PanelBlockField label="Order">
                     <TextArea
                         type="text"
