@@ -14,9 +14,10 @@ import { Button, Control, Field, Input, PanelBlock, Select, TextArea } from 'blo
 import { actions, dispatch } from 'codesandbox-api';
 import * as _ from 'lodash';
 import * as React from 'react';
-import { PanelBlockField } from '../helpers/PanelBlockField';
-import { tokensByNetwork, tokens } from '../helpers/tokens';
-import { NULL_ADDRESS, ZERO } from '../helpers/utils';
+
+import { tokens, tokensByNetwork } from '../../tokens';
+import { NULL_ADDRESS, ZERO } from '../../utils';
+import { PanelBlockField } from '../panel_block_field';
 
 interface Props {
     contractWrappers: ContractWrappers;
@@ -32,7 +33,7 @@ interface CreateOrderState {
     orderHash?: string;
 }
 
-export default class CreateOrder extends React.Component<Props, CreateOrderState> {
+export class CreateOrder extends React.Component<Props, CreateOrderState> {
     constructor(props: Props) {
         super(props);
         this.state = {
@@ -42,7 +43,7 @@ export default class CreateOrder extends React.Component<Props, CreateOrderState
             takerAmount: '1',
         };
     }
-    createOrder = async (): Promise<SignedOrder> => {
+    public createOrder = async (): Promise<SignedOrder> => {
         const { makerToken, makerAmount, takerToken, takerAmount } = this.state;
         const { web3Wrapper, contractWrappers } = this.props;
         // Query the available addresses
@@ -51,11 +52,11 @@ export default class CreateOrder extends React.Component<Props, CreateOrderState
         const networkId = await web3Wrapper.getNetworkIdAsync();
         // Use the first account as the maker
         const makerAddress = addresses[0];
-        const tokens = tokensByNetwork[networkId];
+        const tokensForNetwork = tokensByNetwork[networkId];
         // Encode the selected makerToken as assetData for 0x
-        const makerAssetData = assetDataUtils.encodeERC20AssetData(tokens[makerToken].address);
+        const makerAssetData = assetDataUtils.encodeERC20AssetData(tokensForNetwork[makerToken].address);
         // Encode the selected takerToken as assetData for 0x
-        const takerAssetData = assetDataUtils.encodeERC20AssetData(tokens[takerToken].address);
+        const takerAssetData = assetDataUtils.encodeERC20AssetData(tokensForNetwork[takerToken].address);
         const exchangeAddress = contractWrappers.exchange.getContractAddress();
         // Create the order
         const order: Order = {
@@ -92,8 +93,8 @@ export default class CreateOrder extends React.Component<Props, CreateOrderState
         console.log(JSON.stringify(signedOrder, null, 2));
 
         return signedOrder;
-    };
-    render() {
+    }
+    public render(): React.ReactNode {
         const buildTokenSelector = (maker: boolean) => {
             const selected = maker ? this.state.makerToken : this.state.takerToken;
             console.log(Object.keys(tokens));
@@ -183,14 +184,14 @@ export default class CreateOrder extends React.Component<Props, CreateOrderState
             </div>
         );
     }
-    createOrderTokenSelected = (symbol: string, maker: boolean) => {
+    public createOrderTokenSelected = (symbol: string, maker: boolean) => {
         this.setState(prevState => {
             return maker ? { ...prevState, makerToken: symbol } : { ...prevState, takerToken: symbol };
         });
-    };
-    createOrderTokenTokenAmount = (amount: string, maker: boolean) => {
+    }
+    public createOrderTokenTokenAmount = (amount: string, maker: boolean) => {
         this.setState(prevState => {
             return maker ? { ...prevState, makerAmount: amount } : { ...prevState, takerAmount: amount };
         });
-    };
+    }
 }

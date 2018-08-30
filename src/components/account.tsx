@@ -3,7 +3,8 @@ import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, Column, Columns, Content, Icon, Subtitle, Table } from 'bloomer';
 import * as _ from 'lodash';
 import * as React from 'react';
-import { tokensByNetwork, ETHER_TOKEN } from './helpers/tokens';
+
+import { ETHER_TOKEN, tokensByNetwork } from '../tokens';
 
 interface Props {
     web3Wrapper: Web3Wrapper;
@@ -29,16 +30,16 @@ interface AccountState {
     selectedAccount: string;
 }
 
-export default class Account extends React.Component<Props, AccountState> {
+export class Account extends React.Component<Props, AccountState> {
     constructor(props: Props) {
         super(props);
         this.state = { balances: {}, selectedAccount: '' };
-        this.fetchAccountDetailsAsync();
+        void this.fetchAccountDetailsAsync();
         setInterval(() => {
-            this.checkAccountChange();
+            void this.checkAccountChangeAsync();
         }, 2000);
     }
-    fetchAccountDetailsAsync = async () => {
+    public fetchAccountDetailsAsync = async () => {
         const { web3Wrapper, erc20TokenWrapper } = this.props;
         const { balances } = this.state;
         const addresses = await web3Wrapper.getAvailableAddressesAsync();
@@ -55,7 +56,7 @@ export default class Account extends React.Component<Props, AccountState> {
                 const balance = await erc20TokenWrapper.getBalanceAsync(token.address, address);
                 const allowance = await erc20TokenWrapper.getProxyAllowanceAsync(token.address, address);
                 const numberBalance = new BigNumber(balance);
-                return { token: token, balance: numberBalance, allowance, tradeable: true };
+                return { token, balance: numberBalance, allowance, tradeable: true };
             },
         );
 
@@ -79,8 +80,8 @@ export default class Account extends React.Component<Props, AccountState> {
             const selectedAccount = prevSelectedAccount !== address ? address : prevSelectedAccount;
             return { ...prev, balances, selectedAccount };
         });
-    };
-    checkAccountChange = async () => {
+    }
+    public checkAccountChangeAsync = async () => {
         const { web3Wrapper } = this.props;
         const { selectedAccount } = this.state;
         const addresses = await web3Wrapper.getAvailableAddressesAsync();
@@ -90,19 +91,17 @@ export default class Account extends React.Component<Props, AccountState> {
         }
         if (selectedAccount !== address) {
             const balances = {};
-            this.setState(prev => {
-                return { ...prev, balances, selectedAccount };
-            });
-            this.fetchAccountDetailsAsync();
+            this.setState(prev => ({ ...prev, balances, selectedAccount }));
+            void this.fetchAccountDetailsAsync();
         }
-    };
-    setProxyAllowanceAsync = async (tokenAddress: string) => {
+    }
+    public setProxyAllowanceAsync = async (tokenAddress: string) => {
         const { erc20TokenWrapper } = this.props;
         const { selectedAccount } = this.state;
         const txHash = await erc20TokenWrapper.setUnlimitedProxyAllowanceAsync(tokenAddress, selectedAccount);
-        this.transactionSubmitted(txHash);
-    };
-    transactionSubmitted = async (txHash: string) => {
+        void this.transactionSubmittedAsync(txHash);
+    }
+    public transactionSubmittedAsync = async (txHash: string) => {
         const { toastManager, web3Wrapper } = this.props;
         console.log(txHash);
         toastManager.add(`Transaction Submitted: ${txHash}`, {
@@ -116,9 +115,9 @@ export default class Account extends React.Component<Props, AccountState> {
             autoDismiss: true,
         });
         console.log(receipt);
-        this.fetchAccountDetailsAsync();
-    };
-    render() {
+        await this.fetchAccountDetailsAsync();
+    }
+    public render(): React.ReactNode {
         const { balances, selectedAccount } = this.state;
         const accountBalances = balances[selectedAccount];
         const fetchBalancesButton = (
@@ -179,13 +178,13 @@ export default class Account extends React.Component<Props, AccountState> {
         );
     }
 
-    renderAllowanceForTokenBalance(tokenBalance: TokenBalanceAllowance) {
+    public renderAllowanceForTokenBalance(tokenBalance: TokenBalanceAllowance): React.ReactNode {
         let allowanceRender;
         if (tokenBalance.tradeable) {
             allowanceRender = tokenBalance.allowance.greaterThan(0) ? (
                 <Icon isSize="small" className="fa fa-check-circle" style={{ color: 'rgb(77, 197, 92)' }} />
             ) : (
-                <a href="#" onClick={() => this.setProxyAllowanceAsync(tokenBalance.token.address)}>
+                <a href="#" onClick={() => void this.setProxyAllowanceAsync(tokenBalance.token.address)}>
                     <Icon isSize="small" className="fa fa-lock" />
                 </a>
             );

@@ -2,8 +2,9 @@ import { ContractWrappers, orderHashUtils, OrderStatus } from '0x.js';
 import { Button, PanelBlock, TextArea } from 'bloomer';
 import { actions, dispatch } from 'codesandbox-api';
 import * as React from 'react';
-import { PanelBlockField } from '../helpers/PanelBlockField';
-import { parseJSONSignedOrder } from '../helpers/utils';
+
+import { parseJSONSignedOrder } from '../../utils';
+import { PanelBlockField } from '../panel_block_field';
 
 interface Props {
     contractWrappers: ContractWrappers;
@@ -14,8 +15,8 @@ interface CancelOrderState {
     order?: string;
 }
 
-export default class CancelOrder extends React.Component<Props, CancelOrderState> {
-    cancelOrder = async () => {
+export class CancelOrder extends React.Component<Props, CancelOrderState> {
+    public cancelOrderAsync = async () => {
         const { order } = this.state;
         const { contractWrappers, onTxSubmitted } = this.props;
         if (order) {
@@ -23,7 +24,7 @@ export default class CancelOrder extends React.Component<Props, CancelOrderState
             const signedOrder = parseJSONSignedOrder(order);
             // Retrieve the order info, only cancel fillable orders
             const orderInfo = await contractWrappers.exchange.getOrderInfoAsync(signedOrder);
-            if (orderInfo.orderStatus == OrderStatus.FILLABLE) {
+            if (orderInfo.orderStatus === OrderStatus.FILLABLE) {
                 // Call Cancel Order on the Exchange contract
                 const txHash = await contractWrappers.exchange.cancelOrderAsync(signedOrder);
                 onTxSubmitted(txHash);
@@ -33,8 +34,8 @@ export default class CancelOrder extends React.Component<Props, CancelOrderState
                 console.log('Order already filled or cancelled: ', orderHashHex);
             }
         }
-    };
-    render() {
+    }
+    public render(): React.ReactNode {
         return (
             <div>
                 <PanelBlock>
@@ -64,7 +65,7 @@ export default class CancelOrder extends React.Component<Props, CancelOrderState
                 </PanelBlockField>
                 <PanelBlock>
                     <Button
-                        onClick={() => this.cancelOrder()}
+                        onClick={this.cancelOrderAsync}
                         isFullWidth={true}
                         isSize="small"
                         isColor="primary"

@@ -1,13 +1,14 @@
 import { ContractWrappers } from '0x.js';
+import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Column, Columns, Content, Panel, PanelTabs, Subtitle } from 'bloomer';
 import * as _ from 'lodash';
 import * as React from 'react';
-import CancelOrder from './zeroex_actions/CancelOrder';
-import CreateOrder from './zeroex_actions/CreateOrder';
-import FillOrder from './zeroex_actions/FillOrder';
-import WrapEth from './zeroex_actions/WrapEth';
-import GetOrderInfo from './zeroex_actions/OrderInfo';
-import { Web3Wrapper } from '@0xproject/web3-wrapper';
+
+import { CancelOrder } from './zeroex_actions/cancel_order';
+import { CreateOrder } from './zeroex_actions/create_order';
+import { FillOrder } from './zeroex_actions/fill_order';
+import { GetOrderInfo } from './zeroex_actions/order_info';
+import { WrapEth } from './zeroex_actions/wrap_eth';
 
 interface Props {
     contractWrappers: ContractWrappers;
@@ -26,24 +27,24 @@ interface ZeroExActionsState {
     selectedForm: FormType;
 }
 
-export default class ZeroExActions extends React.Component<Props, ZeroExActionsState> {
+export class ZeroExActions extends React.Component<Props, ZeroExActionsState> {
     constructor(props: Props) {
         super(props);
         this.state = { selectedForm: FormType.CREATE };
     }
-    onTxSubmitted = async (txHash: string) => {
+    public onTxSubmitted = async (txHash: string) => {
         this.props.toastManager.add(`Transaction Submitted: ${txHash}`, {
             appearance: 'success',
             autoDismiss: true,
         });
         const receipt = await this.props.web3Wrapper.awaitTransactionMinedAsync(txHash);
-        const appearance = receipt.status == 1 ? 'success' : 'error';
+        const appearance = receipt.status === 1 ? 'success' : 'error';
         this.props.toastManager.add(`Transaction Mined: ${txHash}`, {
             appearance,
             autoDismiss: true,
         });
-    };
-    render() {
+    }
+    public render(): React.ReactNode {
         const { selectedForm } = this.state;
         let currentFormRender;
         switch (selectedForm) {
@@ -90,7 +91,7 @@ export default class ZeroExActions extends React.Component<Props, ZeroExActionsS
         }
         const panelTabsRender = _.map(Object.keys(FormType), formType => {
             const type = FormType[formType];
-            const isActive = selectedForm == type;
+            const isActive = selectedForm === type;
             const className = isActive ? 'is-active' : '';
             return (
                 <a key={type} onClick={() => this.setState({ selectedForm: type })} className={className}>

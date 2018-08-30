@@ -3,7 +3,8 @@ import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, Control, Field, Input, PanelBlock } from 'bloomer';
 import { actions, dispatch } from 'codesandbox-api';
 import * as React from 'react';
-import { PanelBlockField } from '../helpers/PanelBlockField';
+
+import { PanelBlockField } from '../panel_block_field';
 
 interface Props {
     contractWrappers: ContractWrappers;
@@ -14,12 +15,12 @@ interface WrapEthState {
     amount: string;
 }
 
-export default class WrapEth extends React.Component<Props, WrapEthState> {
+export class WrapEth extends React.Component<Props, WrapEthState> {
     constructor(props: Props) {
         super(props);
         this.state = { amount: '1' };
     }
-    wrapOrUnwrapEth = async (wrap: boolean) => {
+    public wrapOrUnwrapEth = async (wrap: boolean) => {
         const { web3Wrapper, contractWrappers, onTxSubmitted } = this.props;
         const { amount } = this.state;
         // Retrieve the ether token address
@@ -36,8 +37,8 @@ export default class WrapEth extends React.Component<Props, WrapEthState> {
                 : await contractWrappers.etherToken.withdrawAsync(etherTokenAddress, weiAmount, account);
             onTxSubmitted(txHash);
         }
-    };
-    render() {
+    }
+    public render(): React.ReactNode {
         return (
             <div>
                 <PanelBlock>
@@ -79,6 +80,6 @@ export default class WrapEth extends React.Component<Props, WrapEthState> {
             </div>
         );
     }
-    wrapEth = async () => this.wrapOrUnwrapEth(true);
-    unwrapEth = async () => this.wrapOrUnwrapEth(false);
+    public wrapEth = async () => this.wrapOrUnwrapEth(true);
+    public unwrapEth = async () => this.wrapOrUnwrapEth(false);
 }

@@ -1,16 +1,16 @@
-import * as React from 'react';
 import { Web3Wrapper } from '@0xproject/web3-wrapper';
-import { Button, Content, Subtitle, Control } from 'bloomer';
+import { Button, Content, Control, Subtitle } from 'bloomer';
+import * as React from 'react';
 
 interface Props {
     web3Wrapper: Web3Wrapper;
 }
 
-export default class Faucet extends React.Component<Props, {}> {
+export class Faucet extends React.Component<Props, {}> {
     constructor(props: Props) {
         super(props);
     }
-    render() {
+    public render(): React.ReactNode {
         return (
             <Content style={{ marginTop: '20px' }}>
                 <Subtitle isSize={6}>Faucet</Subtitle>
@@ -36,18 +36,18 @@ export default class Faucet extends React.Component<Props, {}> {
             </Content>
         );
     }
-    dispenseZRX = async (): Promise<void> => {
+    public dispenseZRX = async (): Promise<void> => {
         const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
         const address = addresses[0];
         const url = `https://faucet.0xproject.com/zrx/${address}`;
         await fetch(url);
         console.log('Dispense ZRX requested');
-    };
-    dispenseETH = async (): Promise<void> => {
+    }
+    public dispenseETH = async (): Promise<void> => {
         const addresses = await this.props.web3Wrapper.getAvailableAddressesAsync();
         const address = addresses[0];
         const url = `https://faucet.0xproject.com/ether/${address}`;
         await fetch(url);
         console.log('Dispense ETH requested');
-    };
+    }
 }

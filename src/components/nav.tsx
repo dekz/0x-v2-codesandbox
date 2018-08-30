@@ -1,4 +1,4 @@
-import { Navbar, NavbarBrand, NavbarEnd, NavbarItem, NavbarMenu, Image } from 'bloomer';
+import { Image, Navbar, NavbarBrand, NavbarEnd, NavbarItem, NavbarMenu } from 'bloomer';
 import * as React from 'react';
 
 interface NavState {
@@ -6,11 +6,8 @@ interface NavState {
 }
 interface NavProps {}
 export class Nav extends React.Component<NavProps, NavState> {
-    constructor(props: NavProps) {
-        super(props);
-        this.state = { isActive: false };
-    }
-    render() {
+    public state = { isActive: false };
+    public render(): React.ReactNode {
         return (
             <Navbar style={{ zIndex: -1 }}>
                 <NavbarBrand>

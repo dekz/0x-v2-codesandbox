@@ -5,12 +5,13 @@ import { Content, Footer } from 'bloomer';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import { ToastProvider, withToastManager } from 'react-toast-notifications';
-import Account from './Account';
-import Faucet from './Faucet';
-import InstallMetamask from './helpers/InstallMetamask';
-import { Nav } from './Nav';
-import Welcome from './Welcome';
-import ZeroExActions from './ZeroExActions';
+
+import { Account } from './components/account';
+import { Faucet } from './components/faucet';
+import { InstallMetamask } from './components/install_metamask';
+import { Nav } from './components/nav';
+import { Welcome } from './components/welcome';
+import { ZeroExActions } from './components/zeroex_actions';
 
 // Kovan is a test network
 // Please ensure you have Metamask installed

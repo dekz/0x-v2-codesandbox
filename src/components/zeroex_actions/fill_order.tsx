@@ -3,8 +3,9 @@ import { Web3Wrapper } from '@0xproject/web3-wrapper';
 import { Button, PanelBlock, TextArea } from 'bloomer';
 import { actions, dispatch } from 'codesandbox-api';
 import * as React from 'react';
-import { PanelBlockField } from '../helpers/PanelBlockField';
-import { parseJSONSignedOrder } from '../helpers/utils';
+
+import { parseJSONSignedOrder } from '../../utils';
+import { PanelBlockField } from '../panel_block_field';
 
 interface Props {
     contractWrappers: ContractWrappers;
@@ -15,8 +16,8 @@ interface FillOrderState {
     signedOrder?: string;
 }
 
-export default class FillOrder extends React.Component<Props, FillOrderState> {
-    fillOrder = async (signedOrder: SignedOrder): Promise<string> => {
+export class FillOrder extends React.Component<Props, FillOrderState> {
+    public fillOrder = async (signedOrder: SignedOrder): Promise<string> => {
         const { web3Wrapper, contractWrappers } = this.props;
         // Query all available addresses
         const addresses = await web3Wrapper.getAvailableAddressesAsync();
@@ -26,8 +27,8 @@ export default class FillOrder extends React.Component<Props, FillOrderState> {
         // Call fillOrder on the Exchange contract
         const txHash = await contractWrappers.exchange.fillOrderAsync(signedOrder, takerFillAmount, takerAddress);
         return txHash;
-    };
-    render() {
+    }
+    public render(): React.ReactNode {
         return (
             <div>
                 <PanelBlock>
@@ -64,12 +65,12 @@ export default class FillOrder extends React.Component<Props, FillOrderState> {
             </div>
         );
     }
-    fillOrderClick = async () => {
+    public fillOrderClick = async () => {
         const signedOrderJSON = this.state.signedOrder;
         if (signedOrderJSON) {
             const signedOrder = parseJSONSignedOrder(signedOrderJSON);
             const txHash = await this.fillOrder(signedOrder);
             this.props.onTxSubmitted(txHash);
         }
-    };
+    }
 }

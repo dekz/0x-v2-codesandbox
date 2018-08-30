@@ -1,9 +1,10 @@
 import { ContractWrappers, orderHashUtils, OrderInfo, OrderStatus } from '0x.js';
 import { Button, Input, PanelBlock, TextArea } from 'bloomer';
+import { actions, dispatch } from 'codesandbox-api';
 import * as React from 'react';
-import { PanelBlockField } from '../helpers/PanelBlockField';
-import { parseJSONSignedOrder } from '../helpers/utils';
-import { dispatch, actions } from 'codesandbox-api';
+
+import { parseJSONSignedOrder } from '../../utils';
+import { PanelBlockField } from '../panel_block_field';
 
 interface Props {
     contractWrappers: ContractWrappers;
@@ -16,8 +17,8 @@ interface OrderInfoState {
     orderHash?: string;
 }
 
-export default class GetOrderInfo extends React.Component<Props, OrderInfoState> {
-    getInfoClick = async () => {
+export class GetOrderInfo extends React.Component<Props, OrderInfoState> {
+    public getInfo = async () => {
         const { order } = this.state;
         const { contractWrappers } = this.props;
         if (order) {
@@ -27,12 +28,10 @@ export default class GetOrderInfo extends React.Component<Props, OrderInfoState>
             const orderHashHex = orderHashUtils.getOrderHashHex(signedOrder);
             // call getOrderInfo on the Exchange contract
             const orderInfo = await contractWrappers.exchange.getOrderInfoAsync(signedOrder);
-            this.setState(prev => {
-                return { ...prev, orderHash: orderHashHex, orderInfo };
-            });
+            this.setState(prev => ({ ...prev, orderHash: orderHashHex, orderInfo }));
         }
-    };
-    render() {
+    }
+    public render(): React.ReactNode {
         const orderInfoRender =
             this.state && this.state.orderInfo ? (
                 <div>
@@ -64,16 +63,14 @@ export default class GetOrderInfo extends React.Component<Props, OrderInfoState>
                         placeholder="Order"
                         onChange={e => {
                             const value = (e.target as any).value;
-                            this.setState(prevState => {
-                                return { ...prevState, order: value };
-                            });
+                            this.setState(prevState => ({ ...prevState, order: value }));
                         }}
                     />
                 </PanelBlockField>
                 {orderInfoRender}
                 <PanelBlock>
                     <Button
-                        onClick={() => this.getInfoClick()}
+                        onClick={this.getInfo}
                         isFullWidth={true}
                         isSize="small"
                         isColor="primary"

@@ -1,8 +1,12 @@
 import { Field, FieldBody, FieldLabel, Label, PanelBlock } from 'bloomer';
 import * as React from 'react';
 
-export class PanelBlockField extends React.Component<{ label: string }, {}> {
-    render() {
+interface Props {
+    label: string;
+}
+
+export class PanelBlockField extends React.Component<Props, {}> {
+    public render(): React.ReactNode {
         return (
             <PanelBlock>
                 <Field isHorizontal={true}>
