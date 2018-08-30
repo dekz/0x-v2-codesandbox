@@ -54,7 +54,7 @@ const App = () => {
         renderContent = <InstallMetamask />;
     }
     return (
-        <div>
+        <div style={{ paddingLeft: 30, paddingRight: 30, paddingBottom: 30 }}>
             <Nav />
             <Content className="container">{renderContent}</Content>
             <Footer />

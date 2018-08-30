@@ -11,11 +11,11 @@ export class Nav extends React.Component<NavProps, NavState> {
         return (
             <Navbar style={{ zIndex: -1 }}>
                 <NavbarBrand>
-                    <NavbarItem>
+                    <NavbarItem style={{ padding: 0, display: 'flex', alignItems: 'center' }}>
                         <Image
                             isSize="16x16"
                             src="https://0xproject.com/images/favicon/favicon-2-32x32.png"
-                            style={{ marginRight: '10px' }}
+                            style={{ marginLeft: 0, marginRight: 10 }}
                         />
                         <strong> 0x Sandbox </strong>
                     </NavbarItem>
