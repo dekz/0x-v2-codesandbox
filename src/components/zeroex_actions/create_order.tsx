@@ -43,7 +43,7 @@ export class CreateOrder extends React.Component<Props, CreateOrderState> {
             takerAmount: '1',
         };
     }
-    public createOrder = async (): Promise<SignedOrder> => {
+    public createOrderAsync = async (): Promise<SignedOrder> => {
         const { makerToken, makerAmount, takerToken, takerAmount } = this.state;
         const { web3Wrapper, contractWrappers } = this.props;
         // Query the available addresses
@@ -97,8 +97,6 @@ export class CreateOrder extends React.Component<Props, CreateOrderState> {
     public render(): React.ReactNode {
         const buildTokenSelector = (maker: boolean) => {
             const selected = maker ? this.state.makerToken : this.state.takerToken;
-            console.log(Object.keys(tokens));
-            console.log(selected);
             return (
                 <Select onChange={e => this.createOrderTokenSelected((e.target as any).value, maker)} value={selected}>
                     {_.map(Object.keys(tokens), token => {
@@ -159,7 +157,9 @@ export class CreateOrder extends React.Component<Props, CreateOrderState> {
                         by the maker. Takers find these signed orders and "fill" them by submitting to the blockchain.{' '}
                         <a
                             onClick={() =>
-                                dispatch(actions.editor.openModule('/src/zeroex_actions/CreateOrder.tsx', 40))
+                                dispatch(
+                                    actions.editor.openModule('/src/components/zeroex_actions/create_order.tsx', 46),
+                                )
                             }
                         >
                             View the code
@@ -172,7 +172,7 @@ export class CreateOrder extends React.Component<Props, CreateOrderState> {
                 {signedOrderRender}
                 <PanelBlock>
                     <Button
-                        onClick={this.createOrder}
+                        onClick={this.createOrderAsync}
                         isFullWidth={true}
                         isSize="small"
                         isColor="primary"

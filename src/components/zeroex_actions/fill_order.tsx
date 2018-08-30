@@ -17,7 +17,7 @@ interface FillOrderState {
 }
 
 export class FillOrder extends React.Component<Props, FillOrderState> {
-    public fillOrder = async (signedOrder: SignedOrder): Promise<string> => {
+    public fillOrderAsync = async (signedOrder: SignedOrder): Promise<string> => {
         const { web3Wrapper, contractWrappers } = this.props;
         // Query all available addresses
         const addresses = await web3Wrapper.getAvailableAddressesAsync();
@@ -35,7 +35,11 @@ export class FillOrder extends React.Component<Props, FillOrderState> {
                     <div>
                         Orders are filled when a taker submits them to the blockchain. This example executes a
                         fillOrder, filling the entire amount of the order.{' '}
-                        <a onClick={() => dispatch(actions.editor.openModule('/src/zeroex_actions/FillOrder.tsx', 19))}>
+                        <a
+                            onClick={() =>
+                                dispatch(actions.editor.openModule('/src/components/zeroex_actions/fill_order.tsx', 20))
+                            }
+                        >
                             View the code
                         </a>
                         .
@@ -69,7 +73,7 @@ export class FillOrder extends React.Component<Props, FillOrderState> {
         const signedOrderJSON = this.state.signedOrder;
         if (signedOrderJSON) {
             const signedOrder = parseJSONSignedOrder(signedOrderJSON);
-            const txHash = await this.fillOrder(signedOrder);
+            const txHash = await this.fillOrderAsync(signedOrder);
             this.props.onTxSubmitted(txHash);
         }
     }

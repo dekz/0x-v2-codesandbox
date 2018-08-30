@@ -43,7 +43,9 @@ export class CancelOrder extends React.Component<Props, CancelOrderState> {
                         Orders must be cancelled on-chain (or their specified expiry time passes).{' '}
                         <a
                             onClick={() =>
-                                dispatch(actions.editor.openModule('/src/zeroex_actions/CancelOrder.tsx', 18))
+                                dispatch(
+                                    actions.editor.openModule('/src/components/zeroex_actions/cancel_order.tsx', 19),
+                                )
                             }
                         >
                             View the code

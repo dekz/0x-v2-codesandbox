@@ -18,7 +18,7 @@ interface OrderInfoState {
 }
 
 export class GetOrderInfo extends React.Component<Props, OrderInfoState> {
-    public getInfo = async () => {
+    public getInfoAsync = async () => {
         const { order } = this.state;
         const { contractWrappers } = this.props;
         if (order) {
@@ -51,7 +51,11 @@ export class GetOrderInfo extends React.Component<Props, OrderInfoState> {
                 <PanelBlock>
                     <div>
                         Retrieve information about the Order from the Exchange contract.{' '}
-                        <a onClick={() => dispatch(actions.editor.openModule('/src/zeroex_actions/OrderInfo.tsx', 20))}>
+                        <a
+                            onClick={() =>
+                                dispatch(actions.editor.openModule('/src/components/zeroex_actions/order_info.tsx', 21))
+                            }
+                        >
                             View the code
                         </a>
                         .
@@ -70,7 +74,7 @@ export class GetOrderInfo extends React.Component<Props, OrderInfoState> {
                 {orderInfoRender}
                 <PanelBlock>
                     <Button
-                        onClick={this.getInfo}
+                        onClick={this.getInfoAsync}
                         isFullWidth={true}
                         isSize="small"
                         isColor="primary"

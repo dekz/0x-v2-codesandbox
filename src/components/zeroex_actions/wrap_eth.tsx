@@ -20,7 +20,7 @@ export class WrapEth extends React.Component<Props, WrapEthState> {
         super(props);
         this.state = { amount: '1' };
     }
-    public wrapOrUnwrapEth = async (wrap: boolean) => {
+    public wrapOrUnwrapEthAsync = async (wrap: boolean) => {
         const { web3Wrapper, contractWrappers, onTxSubmitted } = this.props;
         const { amount } = this.state;
         // Retrieve the ether token address
@@ -45,7 +45,11 @@ export class WrapEth extends React.Component<Props, WrapEthState> {
                     <div>
                         ETH is not an ERC20 token and it must first be wrapped to be used in 0x. ETH can be wrapped to
                         become wETH and wETH can be unwrapped retrieve ETH.{' '}
-                        <a onClick={() => dispatch(actions.editor.openModule('/src/zeroex_actions/WrapEth.tsx', 23))}>
+                        <a
+                            onClick={() =>
+                                dispatch(actions.editor.openModule('/src/components/zeroex_actions/wrap_eth.tsx', 23))
+                            }
+                        >
                             View the code
                         </a>
                         .
@@ -80,6 +84,6 @@ export class WrapEth extends React.Component<Props, WrapEthState> {
             </div>
         );
     }
-    public wrapEth = async () => this.wrapOrUnwrapEth(true);
-    public unwrapEth = async () => this.wrapOrUnwrapEth(false);
+    public wrapEth = async () => this.wrapOrUnwrapEthAsync(true);
+    public unwrapEth = async () => this.wrapOrUnwrapEthAsync(false);
 }
