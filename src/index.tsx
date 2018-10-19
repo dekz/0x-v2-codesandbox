@@ -1,7 +1,8 @@
-import { ContractWrappers, RPCSubprovider, Web3ProviderEngine } from '0x.js';
-import { SignerSubprovider } from '@0xproject/subproviders';
-import { Web3Wrapper } from '@0xproject/web3-wrapper';
+import { ContractWrappers } from '@0x/contract-wrappers';
+import { MetamaskSubprovider, RPCSubprovider, SignerSubprovider, Web3ProviderEngine } from '@0x/subproviders';
+import { Web3Wrapper } from '@0x/web3-wrapper';
 import { Content, Footer } from 'bloomer';
+import * as _ from 'lodash';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import { ToastProvider, withToastManager } from 'react-toast-notifications';
@@ -13,61 +14,86 @@ import { Nav } from './components/nav';
 import { Welcome } from './components/welcome';
 import { ZeroExActions } from './components/zeroex_actions';
 
-// Kovan and Ropsten are test networks
-// Please ensure you have Metamask installed
-// and it is connected to the correct test network
-// const ROPSTEN_NETWORK_ID = 3;
-// const ROPSTEN_RPC = 'https://ropsten.infura.io';
-const KOVAN_NETWORK_ID = 42;
-const KOVAN_RPC = 'https://kovan.infura.io';
+interface AppState {
+    web3Wrapper?: Web3Wrapper;
+    contractWrappers?: ContractWrappers;
+    web3?: any;
+}
+const networkIdToRPCURI = {
+    1: 'https://mainnet.infura.io',
+    3: 'https://ropsten.infura.io',
+    42: 'https://kovan.infura.io',
+};
 
-const App = () => {
-    let renderContent;
-    // Detect if Web3 is found, if not, ask the user to install Metamask
-    const web3 = (window as any).web3;
-    if (web3) {
-        // Set up Web3 Provider Engine with a few helper Subproviders from 0x
-        const providerEngine = new Web3ProviderEngine({ pollingInterval: 10000 });
-        // All signing based requests are handled by the SignerSubprovider
-        providerEngine.addProvider(new SignerSubprovider(web3.currentProvider));
-        // All other requests will fall through to the next subprovider, such as data requests
-        providerEngine.addProvider(new RPCSubprovider(KOVAN_RPC));
-        providerEngine.start();
-
-        const contractWrappers = new ContractWrappers(providerEngine, { networkId: KOVAN_NETWORK_ID });
-        const web3Wrapper = new Web3Wrapper(providerEngine);
-        const erc20TokenWrapper = contractWrappers.erc20Token;
-
+export class MainApp extends React.Component<{}, AppState> {
+    public componentDidMount(): void {
+        const web3 = (window as any).web3;
+        if (web3) {
+            let web3Wrapper = new Web3Wrapper(web3.currentProvider);
+            void web3Wrapper.getNetworkIdAsync().then(networkId => {
+                const providerEngine = new Web3ProviderEngine({ pollingInterval: 50000 });
+                const signer = (web3.currentProvider as any).isMetaMask
+                    ? new MetamaskSubprovider(web3.currentProvider)
+                    : new SignerSubprovider(web3.currentProvider);
+                console.log(signer);
+                const rpcProvider = new RPCSubprovider(networkIdToRPCURI[networkId]);
+                providerEngine.addProvider(signer);
+                providerEngine.addProvider(rpcProvider);
+                providerEngine.start();
+                const provider = providerEngine;
+                web3Wrapper = new Web3Wrapper(provider);
+                const contractWrappers = new ContractWrappers(provider, { networkId });
+                _.map(
+                    [
+                        contractWrappers.exchange.abi,
+                        contractWrappers.erc20Token.abi,
+                        contractWrappers.etherToken.abi,
+                        contractWrappers.forwarder.abi,
+                    ],
+                    abi => web3Wrapper.abiDecoder.addABI(abi),
+                );
+                this.setState({ web3Wrapper, contractWrappers, web3 });
+            });
+        }
+    }
+    public render(): React.ReactNode {
         const AccountWithToasts = withToastManager(Account);
         const ZeroExActionsWithToasts = withToastManager(ZeroExActions);
-
-        // Browse the individual files for more handy examples
-        renderContent = (
-            <div>
-                <Welcome />
-                <ToastProvider>
-                    <AccountWithToasts erc20TokenWrapper={erc20TokenWrapper} web3Wrapper={web3Wrapper} />
-                    <ZeroExActionsWithToasts contractWrappers={contractWrappers} web3Wrapper={web3Wrapper} />
-                    <Faucet web3Wrapper={web3Wrapper} />
-                </ToastProvider>
+        if (!this.state || !this.state.contractWrappers || !this.state.web3Wrapper) {
+            return <div />;
+        }
+        return (
+            <div style={{ paddingLeft: 30, paddingRight: 30, paddingBottom: 30 }}>
+                <Nav web3Wrapper={this.state.web3Wrapper} />
+                <Content className="container">
+                    {this.state.web3 && (
+                        <div>
+                            <Welcome />
+                            <ToastProvider>
+                                <AccountWithToasts
+                                    erc20TokenWrapper={this.state.contractWrappers.erc20Token}
+                                    web3Wrapper={this.state.web3Wrapper}
+                                />
+                                <ZeroExActionsWithToasts
+                                    contractWrappers={this.state.contractWrappers}
+                                    web3Wrapper={this.state.web3Wrapper}
+                                />
+                                <Faucet web3Wrapper={this.state.web3Wrapper} />
+                            </ToastProvider>
+                        </div>
+                    )}
+                    {!this.state.web3 && <InstallMetamask />}
+                </Content>
+                <Footer />
             </div>
         );
-    } else {
-        renderContent = <InstallMetamask />;
     }
-    return (
-        <div style={{ paddingLeft: 30, paddingRight: 30, paddingBottom: 30 }}>
-            <Nav />
-            <Content className="container">{renderContent}</Content>
-            <Footer />
-        </div>
-    );
-};
+}
 
 const e = React.createElement;
 const main = document.getElementById('app');
 if (main) {
-    ReactDOM.render(e(App), main);
+    ReactDOM.render(e(MainApp), main);
 } else {
     console.log('Cannot find main container');
 }
